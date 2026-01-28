@@ -16,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const Favorites = () => {
   const navigation = useNavigation();
-  const { books } = useAppContext();
   const {
     addStorageData: addToFavorites,
     removeStorageData: removeFromFavorites,
@@ -25,18 +24,10 @@ const Favorites = () => {
 
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Mock data with status - in real app, this would come from API/context
-  const listings = (favorites || []).map((bike, index) => ({
-    ...bike,
-    status: index === 0 ? "active" : index === 1 ? "pending" : "sold",
-    views: [24, 108, 0][index] || 0,
-    soldDate: index === 2 ? "2 days ago" : null,
-  }));
-
   const filteredListings =
     statusFilter === "all"
-      ? listings
-      : listings.filter((item) => item.status === statusFilter);
+      ? favorites || []
+      : (favorites || []).filter((item) => item.status === statusFilter);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -67,29 +58,20 @@ const Favorites = () => {
       ]
     );
   };
-
-  const handleHide = (bikeId) => {
-    Alert.alert(
-      "Hide Listing",
-      "This listing will be hidden from buyers but you can restore it later.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Hide",
-          onPress: () => {
-            Alert.alert("Success", "Listing has been hidden.");
-          },
-        },
-      ]
-    );
-  };
-
   const ListingCard = ({ bike }) => {
-    const statusInfo = getStatusColor(bike.status);
-    const isSold = bike.status === "sold";
+    // Handle both old and new data formats
+    const listingId = bike.listing_id || bike.id;
+    const vehicleData = bike.vehicle || bike;
+    const mediaData = bike.media || [];
+    const firstImage = mediaData.length > 0 
+      ? mediaData[0].file_url 
+      : (bike.image || "https://random-image-pepebigotes.vercel.app/api/random-image");
+    const sellerInfo = bike.seller || {};
+    const price = vehicleData.price?.d ? vehicleData.price.d[0] : vehicleData.price;
 
     return (
-      <View
+      <Pressable
+        onPress={() => navigation.navigate("Detail", { product: bike })}
         style={{
           backgroundColor: "#fff",
           borderRadius: 12,
@@ -102,7 +84,6 @@ const Favorites = () => {
           shadowOpacity: 0.05,
           shadowRadius: 4,
           elevation: 2,
-          opacity: isSold ? 0.75 : 1,
         }}
       >
         {/* Card Content */}
@@ -119,7 +100,7 @@ const Favorites = () => {
           >
             <Image
               source={{
-                uri: bike.image || "https://random-image-pepebigotes.vercel.app/api/random-image",
+                uri: firstImage,
               }}
               style={{
                 width: "100%",
@@ -149,26 +130,8 @@ const Favorites = () => {
                 }}
                 numberOfLines={1}
               >
-                {bike.brand} {bike.model}
+                {vehicleData.brand} {vehicleData.model}
               </Text>
-              <View
-                style={{
-                  backgroundColor: statusInfo.bg,
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: 4,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "600",
-                    color: statusInfo.text,
-                  }}
-                >
-                  {statusInfo.label}
-                </Text>
-              </View>
             </View>
 
             <Text
@@ -179,10 +142,10 @@ const Favorites = () => {
                 marginBottom: 4,
               }}
             >
-              ${bike.price}
+              {price && typeof price === "number" ? `₫${Math.round(price).toLocaleString('vi-VN')}` : "N/A"}
             </Text>
 
-            {/* Views or Sold Date */}
+            {/* Seller Info */}
             <View
               style={{
                 flexDirection: "row",
@@ -191,12 +154,12 @@ const Favorites = () => {
               }}
             >
               <MaterialCommunityIcons
-                name={isSold ? "calendar-today" : "eye"}
+                name="account"
                 size={12}
                 color="#999"
               />
               <Text style={{ fontSize: 11, color: "#999" }}>
-                {isSold ? `Sold ${bike.soldDate}` : `${bike.views} views`}
+                {sellerInfo.full_name || "Unknown"}
               </Text>
             </View>
           </View>
@@ -216,7 +179,6 @@ const Favorites = () => {
           }}
         >
           <Pressable
-            disabled={isSold}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -227,22 +189,21 @@ const Favorites = () => {
               borderWidth: 1,
               borderColor: "#e0e0e0",
               borderRadius: 8,
-              opacity: isSold ? 0.5 : 1,
             }}
           >
             <MaterialCommunityIcons
-              name={isSold ? "pencil-off" : "pencil"}
+              name="eye"
               size={16}
-              color={isSold ? "#999" : "#111"}
+              color="#111"
             />
             <Text
               style={{
                 fontSize: 12,
                 fontWeight: "600",
-                color: isSold ? "#999" : "#111",
+                color: "#111",
               }}
             >
-              Edit
+              View
             </Text>
           </Pressable>
 
@@ -252,8 +213,9 @@ const Favorites = () => {
               gap: 8,
             }}
           >
+            
             <Pressable
-              onPress={() => handleHide(bike.id)}
+              onPress={() => removeFromFavorites(listingId)}
               style={{
                 width: 36,
                 height: 36,
@@ -263,13 +225,14 @@ const Favorites = () => {
               }}
             >
               <MaterialCommunityIcons
-                name="eye-off"
+                name="heart"
                 size={20}
-                color="#999"
+                color="#FF4444"
               />
             </Pressable>
+
             <Pressable
-              onPress={() => handleDelete(bike.id)}
+              onPress={() => handleDelete(listingId)}
               style={{
                 width: 36,
                 height: 36,
@@ -286,16 +249,16 @@ const Favorites = () => {
             </Pressable>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f7f8" }}>
-      {/* Header */}
+      {/* Header + Filter */}
       <SafeAreaView
         style={{
-          backgroundColor: "#f5f7f8",
+          backgroundColor: "#fff",
           borderBottomWidth: 1,
           borderBottomColor: "#f0f0f0",
         }}
@@ -318,87 +281,73 @@ const Favorites = () => {
           >
             My Listings
           </Text>
-          <Pressable
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <MaterialCommunityIcons
-              name="cog"
-              size={24}
-              color="#111"
-            />
-          </Pressable>
+          
         </View>
-      </SafeAreaView>
 
-      {/* Filter Tabs */}
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: "#f5f7f8",
-          zIndex: 10,
-        }}
-      >
+        {/* Filter Tabs */}
         <View
           style={{
-            flexDirection: "row",
-            backgroundColor: "rgba(0, 0, 0, 0.05)",
-            borderRadius: 8,
-            padding: 4,
-            gap: 4,
+            paddingHorizontal: 16,
+            paddingBottom: 12,
+            backgroundColor: "#fff",
           }}
         >
-          {["all", "active", "pending", "sold"].map((filter) => (
-            <Pressable
-              key={filter}
-              onPress={() => setStatusFilter(filter)}
-              style={{
-                flex: 1,
-                paddingVertical: 8,
-                paddingHorizontal: 8,
-                borderRadius: 6,
-                backgroundColor:
-                  statusFilter === filter ? "#fff" : "transparent",
-                shadowColor:
-                  statusFilter === filter ? "#000" : "transparent",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: statusFilter === filter ? 0.1 : 0,
-                shadowRadius: 2,
-                elevation: statusFilter === filter ? 1 : 0,
-              }}
-            >
-              <Text
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: "rgba(0, 0, 0, 0.05)",
+              borderRadius: 8,
+              padding: 4,
+              gap: 4,
+            }}
+          >
+            {["all"].map((filter) => (
+              <Pressable
+                key={filter}
+                onPress={() => setStatusFilter(filter)}
                 style={{
-                  fontSize: 12,
-                  fontWeight: "500",
-                  color:
-                    statusFilter === filter ? "#111" : "#999",
-                  textAlign: "center",
-                  textTransform: "capitalize",
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 8,
+                  borderRadius: 6,
+                  backgroundColor:
+                    statusFilter === filter ? "#fff" : "transparent",
+                  shadowColor:
+                    statusFilter === filter ? "#000" : "transparent",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: statusFilter === filter ? 0.1 : 0,
+                  shadowRadius: 2,
+                  elevation: statusFilter === filter ? 1 : 0,
                 }}
               >
-                {filter === "all"
-                  ? "All"
-                  : filter.charAt(0).toUpperCase() + filter.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "500",
+                    color:
+                      statusFilter === filter ? "#111" : "#999",
+                    textAlign: "center",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {filter === "all"
+                    ? "All"
+                    : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
 
       {/* Listings List */}
       <FlatList
         data={filteredListings}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => (item.listing_id || item.id || Math.random().toString()).toString()}
         renderItem={({ item }) => <ListingCard bike={item} />}
         contentContainerStyle={{
           paddingHorizontal: 16,
+          paddingTop: 12,
           paddingBottom: 120,
         }}
         scrollIndicatorInsets={{ right: 1 }}
