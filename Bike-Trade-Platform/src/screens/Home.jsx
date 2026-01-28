@@ -12,9 +12,10 @@ import { useAppContext } from "../provider/AppProvider";
 import { useNavigation } from "@react-navigation/native";
 import { useStorageContext } from "../provider/StorageProvider";
 import { useState, useEffect } from "react";
+import { TextInput } from "react-native-gesture-handler";
+import { getProducts, getCategories } from "../services/api.products";
 
 const Home = () => {
-  const { books } = useAppContext();
   const navigation = useNavigation();
   const {
     addStorageData: addToFavorites,
@@ -23,34 +24,100 @@ const Home = () => {
   } = useStorageContext();
 
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [filteredBikes, setFilteredBikes] = useState(books || []);
+  const [filteredBikes, setFilteredBikes] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
 
-  const categories = [
-    { name: "All", key: "all" },
-    { name: "Road", key: "road" },
-    { name: "MTB", key: "mtb" },
-    { name: "Vintage", key: "vintage" },
-    { name: "Gravel", key: "gravel" },
-    { name: "E-Bike", key: "ebike" },
-  ];
+  // Fetch categories and products on mount
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+  }, []);
 
+  const fetchCategories = async () => {
+    try {
+      const response = await getCategories(1);
+      console.log("Categories response:", response);
+      
+      // Handle different response structures
+      let categoriesData = [{ category_id: "all", name: "All" }];
+      
+      if (response?.data && Array.isArray(response.data)) {
+        categoriesData = [...categoriesData, ...response.data];
+      } else if (Array.isArray(response)) {
+        categoriesData = [...categoriesData, ...response];
+      }
+      
+      setCategories(categoriesData);
+    } catch (error) {
+      console.log("Error fetching categories:", error.message);
+      // Set default categories if API fails
+      setCategories([{ category_id: "all", name: "All" }]);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await getProducts();
+      console.log("Products response:", response);
+      
+      // Handle different response structures
+      let productsData = [];
+      
+      if (response?.data && Array.isArray(response.data)) {
+        productsData = response.data;
+      } else if (Array.isArray(response)) {
+        productsData = response;
+      } else if (response?.data?.data && Array.isArray(response.data.data)) {
+        productsData = response.data.data;
+      }
+      
+      setAllProducts(productsData);
+      setFilteredBikes(productsData);
+    } catch (error) {
+      console.log("Error fetching products:", error.message);
+      console.log("API Base URL:", process.env.EXPO_PUBLIC_API);
+      
+      // Set empty array instead of failing completely
+      setAllProducts([]);
+      setFilteredBikes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter products by category
   useEffect(() => {
     if (selectedCategory === "All") {
-      setFilteredBikes(books || []);
+      setFilteredBikes(allProducts);
     } else {
-      const filtered = books?.filter(
-        (bike) => bike.category?.toLowerCase().includes(selectedCategory.toLowerCase())
+      // Filter by brand/category name
+      const filtered = allProducts?.filter(
+        (product) => product.vehicle?.brand === selectedCategory
       );
       setFilteredBikes(filtered || []);
     }
-  }, [selectedCategory, books]);
+  }, [selectedCategory, allProducts]);
 
-  const navigateToDetail = (bike) => {
-    navigation.navigate("Detail", { book: bike });
+  const navigateToDetail = (product) => {
+    navigation.navigate("Detail", { product: product });
   };
 
   const BikeCard = ({ bike }) => {
-    const isFavorite = favorites?.some((fav) => fav.id === bike.id);
+    // Handle both old and new data formats
+    const listingId = bike.listing_id || bike.id;
+    const vehicleData = bike.vehicle || bike;
+    const mediaData = bike.media || [];
+    const firstImage = mediaData.length > 0 
+      ? mediaData[0].file_url 
+      : (bike.image || "https://random-image-pepebigotes.vercel.app/api/random-image");
+    
+    const sellerInfo = bike.seller || {};
+    const price = vehicleData.price?.d ? vehicleData.price.d[0] : vehicleData.price;
+
+    const isFavorite = favorites?.some((fav) => fav.listing_id === listingId || fav.id === bike.id);
 
     return (
       <Pressable
@@ -74,7 +141,7 @@ const Home = () => {
         <Pressable
           onPress={() => {
             if (isFavorite) {
-              removeFromFavorites(bike.id);
+              removeFromFavorites(listingId);
             } else {
               addToFavorites(bike);
             }
@@ -108,7 +175,7 @@ const Home = () => {
         >
           <Image
             source={{
-              uri: bike.image,
+              uri: firstImage,
             }}
             style={{
               width: "100%",
@@ -136,7 +203,7 @@ const Home = () => {
                 fontWeight: "bold",
               }}
             >
-              ${bike.price}
+              {price ? `₫${price.toLocaleString('vi-VN')}` : "N/A"}
             </Text>
           </View>
         </View>
@@ -152,10 +219,10 @@ const Home = () => {
             }}
             numberOfLines={1}
           >
-            {bike.brand} {bike.model}
+            {vehicleData.brand} {vehicleData.model}
           </Text>
 
-          {/* Size and Category */}
+          {/* Size and Type */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 }}>
             <View
               style={{
@@ -166,18 +233,18 @@ const Home = () => {
               }}
             >
               <Text style={{ fontSize: 10, fontWeight: "600", color: "#666" }}>
-                {bike.frame_size || "M"}cm
+                {vehicleData.frame_size || "M"}
               </Text>
             </View>
             <Text style={{ fontSize: 10, color: "#999" }}>•</Text>
-            <Text style={{ fontSize: 10, color: "#999" }}>{bike.category}</Text>
+            <Text style={{ fontSize: 10, color: "#999" }}>{vehicleData.bike_type || "Bike"}</Text>
           </View>
 
-          {/* Location */}
+          {/* Seller Info */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-            <MaterialCommunityIcons name="map-marker" size={12} color="#999" />
+            <MaterialCommunityIcons name="account" size={12} color="#999" />
             <Text style={{ fontSize: 10, color: "#999" }} numberOfLines={1}>
-              San Francisco, CA
+              {sellerInfo.full_name || "Unknown"}
             </Text>
           </View>
         </View>
@@ -225,46 +292,11 @@ const Home = () => {
                 BikeMarket
               </Text>
               <Text style={{ fontSize: 10, color: "#999", marginTop: 2 }}>
-                San Francisco, CA
+                Thu Duc, HCM City
               </Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <MaterialCommunityIcons name="bell" size={24} color="#666" />
-              <View
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: "#FF4444",
-                }}
-              />
-            </Pressable>
-            <Image
-              source={{
-                uri: "https://lh3.googleusercontent.com/aida-public/AB6AXuBbF7NEakkmgZmTKwU6375IfbCiFEWAP4vN5FINjCZLQ8fbD1fT47Q8OVw37HIu8KBouH5_0FITBY88fRwVuGF9eialsflGnq2EoV_nZrhSdHx4o9U_q42utpdGGeu2TuE3Fx7dwGo5DM-U_xEOwh4MsHr4rsLQAApdgWzSdIQvs1lPDGf-3nE8Cksjzv_YdW42Yy6jcBNnOoh4llkdNHVOxcPjMoPI6J1KwXge-wISUFGJHKpyTCymc1656IEDSYlog2HwStud-eo",
-              }}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                borderWidth: 2,
-                borderColor: "#fff",
-              }}
-            />
-          </View>
+          
         </View>
 
         {/* Search Bar */}
@@ -288,9 +320,7 @@ const Home = () => {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 14, color: "#999" }}>
-                Search for Trek, Specialized, etc.
-              </Text>
+              <TextInput style={{ fontSize: 14, color: "#999" }} placeholder="Search for Trek, Specialized, etc." />
             </Pressable>
             <MaterialCommunityIcons name="tune" size={20} color="#999" />
           </View>
@@ -305,7 +335,7 @@ const Home = () => {
         >
           {categories.map((cat) => (
             <Pressable
-              key={cat.key}
+              key={cat.category_id || cat.key}
               onPress={() => setSelectedCategory(cat.name)}
               style={{
                 paddingHorizontal: 16,
@@ -334,7 +364,7 @@ const Home = () => {
 
       {/* Main Content */}
       <View style={{ flex: 1 }}>
-        {/* Fresh Finds Header */}
+        {/* Hot Picks Header */}
         <View
           style={{
             flexDirection: "row",
@@ -345,7 +375,7 @@ const Home = () => {
           }}
         >
           <Text style={{ fontSize: 18, fontWeight: "bold", color: "#222" }}>
-            Fresh Finds
+            Hot Picks for You
           </Text>
           <Pressable>
             <Text style={{ fontSize: 12, fontWeight: "600", color: "#359EFF" }}>
@@ -357,7 +387,7 @@ const Home = () => {
         {/* Product Grid */}
         <FlatList
           data={filteredBikes}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.listing_id || item.id.toString()}
           numColumns={2}
           columnWrapperStyle={{ gap: 12, paddingHorizontal: 16 }}
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -371,10 +401,18 @@ const Home = () => {
                 paddingVertical: 40,
               }}
             >
-              <ActivityIndicator size="large" color="#359EFF" />
-              <Text style={{ marginTop: 12, color: "#999" }}>
-                Loading bikes...
-              </Text>
+              {loading ? (
+                <>
+                  <ActivityIndicator size="large" color="#359EFF" />
+                  <Text style={{ marginTop: 12, color: "#999" }}>
+                    Loading bikes...
+                  </Text>
+                </>
+              ) : (
+                <Text style={{ marginTop: 12, color: "#999" }}>
+                  No bikes found
+                </Text>
+              )}
             </View>
           }
         />

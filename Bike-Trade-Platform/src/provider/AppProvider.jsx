@@ -1,10 +1,36 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { instance } from "../lib/axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
   const [books, setBooks] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Check if user is already logged in on app start
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const userData = await AsyncStorage.getItem("userData");
+      if (token) {
+        setIsAuthenticated(true);
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+      }
+    } catch (error) {
+      console.log("Error checking auth status:", error);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const fetchBooks = async () => {
     const res = await instance.get("/");
@@ -28,6 +54,13 @@ const AppProvider = ({ children }) => {
     );
   };
 
+  const logout = async () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    await AsyncStorage.removeItem("authToken");
+    await AsyncStorage.removeItem("userData");
+  };
+
   useEffect(() => {
     fetchBooks();
   }, []);
@@ -40,6 +73,12 @@ const AppProvider = ({ children }) => {
         addBook,
         removeBook,
         updateBook,
+        isAuthenticated,
+        setIsAuthenticated,
+        user,
+        setUser,
+        authLoading,
+        logout,
       }}
     >
       {children}

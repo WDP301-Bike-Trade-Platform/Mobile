@@ -21,7 +21,10 @@ const StorageProvider = ({ children }) => {
   };
 
   const removeStorageData = async (id) => {
-    const updatedData = (storageData || []).filter((item) => item.id !== id);
+    // Handle both listing_id and id fields
+    const updatedData = (storageData || []).filter(
+      (item) => item.listing_id !== id && item.id !== id
+    );
     setStorageData(updatedData);
     await AsyncStorage.setItem(KEY, JSON.stringify(updatedData));
   };
