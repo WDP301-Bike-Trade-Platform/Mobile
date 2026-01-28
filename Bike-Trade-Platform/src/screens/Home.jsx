@@ -74,8 +74,11 @@ const Home = () => {
         productsData = response.data.data;
       }
       
-      setAllProducts(productsData);
-      setFilteredBikes(productsData);
+      // Filter to only show APPROVED products
+      const approvedProducts = productsData.filter((product) => product.status === "APPROVED");
+      
+      setAllProducts(approvedProducts);
+      setFilteredBikes(approvedProducts);
     } catch (error) {
       console.log("Error fetching products:", error.message);
       console.log("API Base URL:", process.env.EXPO_PUBLIC_API);

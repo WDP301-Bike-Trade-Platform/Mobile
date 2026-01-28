@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { getUser, updateUser } from "../services/api.user";
+import { uploadImageToSupabase } from "../services/api.supabase";
 
 const EditProfile = () => {
   const navigation = useNavigation();
@@ -96,6 +97,20 @@ const EditProfile = () => {
     try {
       setSubmitting(true);
 
+      let avatarUrl = userProfile?.profile?.avatar_url;
+
+      // If avatar is a local file (newly selected), upload it to Supabase
+      if (avatarUri && avatarUri.startsWith("file://")) {
+        try {
+          console.log("Uploading avatar to Supabase...");
+          avatarUrl = await uploadImageToSupabase(avatarUri, "images");
+          console.log("Avatar uploaded successfully:", avatarUrl);
+        } catch (uploadError) {
+          console.error("Error uploading avatar:", uploadError);
+          Alert.alert("Warning", "Avatar upload failed, but profile will be updated without avatar");
+        }
+      }
+
       const updateData = {
         full_name: fullName,
         phone: phone,
@@ -104,19 +119,10 @@ const EditProfile = () => {
         ...(nationalId && { national_id: nationalId }),
         ...(bankAccount && { bank_account: bankAccount }),
         ...(bankName && { bank_name: bankName }),
+        ...(avatarUrl && { avatar_url: avatarUrl }),
       };
 
       console.log("Sending update data:", JSON.stringify(updateData, null, 2));
-
-      // If avatar URI is local file, upload it first
-      if (avatarUri && avatarUri.startsWith("file://")) {
-        // Note: Avatar upload would require a separate endpoint
-        // For now, we'll just update the profile without avatar
-        console.log("Avatar upload would be handled here");
-      } else if (avatarUri && !avatarUri.startsWith("http")) {
-        // Handle local file upload
-        console.log("Local file avatar upload needed");
-      }
 
       const result = await updateUser(updateData);
       console.log("Profile update result:", result);
