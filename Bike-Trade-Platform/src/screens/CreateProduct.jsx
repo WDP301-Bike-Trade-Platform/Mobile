@@ -11,10 +11,13 @@ import {
   FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Picker } from "@react-native-picker/picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { uploadMultipleImagesToSupabase } from "../services/api.supabase";
+import { getCategories } from "../services/api.category";
+import { createProduct } from "../services/api.products";
 
 // Separate InputField component to prevent re-renders
 const InputField = memo(({ label, field, placeholder, keyboardType = "default", required = false, multiline = false, value, onChangeText }) => (
@@ -53,6 +56,8 @@ const CreateProduct = () => {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
+  const [categories, setCategories] = useState([]);
+
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -83,10 +88,32 @@ const CreateProduct = () => {
     }));
   }, []);
 
-  // Request camera roll permissions
+  // Request camera roll permissions and fetch categories
   useEffect(() => {
     requestMediaPermissions();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await getCategories();
+      // Handle different response structures
+      let categoriesData = [];
+      if (Array.isArray(response)) {
+        categoriesData = response;
+      } else if (response?.data && Array.isArray(response.data)) {
+        categoriesData = response.data;
+      } else if (response?.categories && Array.isArray(response.categories)) {
+        categoriesData = response.categories;
+      }
+      
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setCategories([]);
+      // Alert.alert("Error", "Failed to load categories");
+    }
+  };
 
   const requestMediaPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -121,8 +148,38 @@ const CreateProduct = () => {
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.category_id || !formData.model || !formData.price) {
-      Alert.alert("Error", "Please fill in all required fields (Brand, Model, Price)");
+    if (!formData.category_id || !formData.brand || !formData.model || !formData.price || 
+        !formData.year || !formData.bike_type || !formData.material || !formData.brake_type ||
+        !formData.usage_level || !formData.mileage_km || !formData.groupset || 
+        !formData.frame_size || !formData.frame_serial || !formData.description) {
+      Alert.alert("Error", "Please fill in all required fields");
+      return;
+    }
+
+    // Validate year
+    const yearNum = parseInt(formData.year);
+    if (isNaN(yearNum) || yearNum < 1990) {
+      Alert.alert("Error", "Year must be a valid number and not less than 1990");
+      return;
+    }
+
+    // Validate price
+    const priceNum = parseFloat(formData.price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      Alert.alert("Error", "Price must be a valid positive number");
+      return;
+    }
+
+    // Validate mileage
+    const mileageNum = parseInt(formData.mileage_km);
+    if (isNaN(mileageNum) || mileageNum < 0) {
+      Alert.alert("Error", "Mileage must be a valid positive number");
+      return;
+    }
+
+    // Validate images
+    if (selectedImages.length < 3) {
+      Alert.alert("Error", "Please select at least 3 images");
       return;
     }
 
@@ -140,17 +197,51 @@ const CreateProduct = () => {
 
       // TODO: Create product with API
       const productData = {
-        ...formData,
-        images: imageUrls, // Include uploaded image URLs
+        category_id: formData.category_id,
+        brand: formData.brand,
+        model: formData.model,
+        year: parseInt(formData.year),
+        price: parseFloat(formData.price),
+        bike_type: formData.bike_type,
+        material: formData.material,
+        brake_type: formData.brake_type,
+        wheel_size: formData.wheel_size,
+        usage_level: formData.usage_level,
+        mileage_km: parseInt(formData.mileage_km),
+        groupset: formData.groupset,
+        frame_size: formData.frame_size,
+        is_original: formData.is_original,
+        has_receipt: formData.has_receipt,
+        frame_serial: formData.frame_serial,
+        description: formData.description,
+        images: imageUrls,
       };
+      console.log("Creating product with data:", JSON.stringify(productData, null, 2));
+      const response = await createProduct(productData);
+      console.log("Product created successfully:", response);
       
-      console.log("Creating product with data:", productData);
+      
       
       Alert.alert("Success", "Product created successfully!");
       navigation.goBack();
     } catch (error) {
       console.error("Error in handleSubmit:", error);
-      Alert.alert("Error", "Failed to create product: " + error.message);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      
+      // Show detailed error message
+      let errorMessage = "Failed to create product";
+      if (error.response?.data?.message) {
+        if (Array.isArray(error.response.data.message)) {
+          errorMessage = error.response.data.message.join("\n");
+        } else {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert("Error", errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -192,34 +283,156 @@ const CreateProduct = () => {
           Bike Details
         </Text>
 
-        <InputField label="Brand" field="category_id" placeholder="e.g., Trek, Giant, Specialized" required value={formData.category_id} onChangeText={(value) => handleInputChange("category_id", value)} />
+        {/* Category Dropdown */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
+           Category <Text style={{ color: "#FF4444" }}>*</Text>
+          </Text>
+          <View style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}>
+            <Picker
+              selectedValue={formData.category_id}
+              onValueChange={(value) => handleInputChange("category_id", value)}
+              style={{ height: 50 }}
+            >
+              <Picker.Item label="Please select a category" value="" />
+              {(categories || []).map((category) => (
+                <Picker.Item 
+                  key={category.category_id} 
+                  label={category.name} 
+                  value={category.category_id} 
+                />
+              ))}
+            </Picker>
+          </View>
+        </View>
+        <InputField label="Brand" field="brand" placeholder="e.g., Trek, Giant, Specialized" required value={formData.brand} onChangeText={(value) => handleInputChange("brand", value)} />
         <InputField label="Model" field="model" placeholder="e.g., Escape 3" required value={formData.model} onChangeText={(value) => handleInputChange("model", value)} />
-        <InputField label="Year" field="year" placeholder={new Date().getFullYear().toString()} keyboardType="numeric" value={formData.year} onChangeText={(value) => handleInputChange("year", value)} />
+        <InputField label="Year" field="year" placeholder={new Date().getFullYear().toString()} keyboardType="numeric" required value={formData.year} onChangeText={(value) => handleInputChange("year", value)} />
         <InputField label="Price (₫)" field="price" placeholder="8500000" keyboardType="numeric" required value={formData.price} onChangeText={(value) => handleInputChange("price", value)} />
 
         <Text style={{ fontSize: 16, fontWeight: "bold", color: "#222", marginBottom: 16, marginTop: 16 }}>
           Specifications
         </Text>
 
-        <InputField label="Bike Type" field="bike_type" placeholder="e.g., ROAD, MOUNTAIN, HYBRID" value={formData.bike_type} onChangeText={(value) => handleInputChange("bike_type", value)} />
-        <InputField label="Material" field="material" placeholder="e.g., ALUMINUM, STEEL, CARBON" value={formData.material} onChangeText={(value) => handleInputChange("material", value)} />
-        <InputField label="Brake Type" field="brake_type" placeholder="e.g., RIM, DISC, V-BRAKE" value={formData.brake_type} onChangeText={(value) => handleInputChange("brake_type", value)} />
-        <InputField label="Wheel Size" field="wheel_size" placeholder='e.g., 700c, 26", 29"' value={formData.wheel_size} onChangeText={(value) => handleInputChange("wheel_size", value)} />
-        <InputField label="Usage Level" field="usage_level" placeholder="e.g., LIGHT, MODERATE, HEAVY" value={formData.usage_level} onChangeText={(value) => handleInputChange("usage_level", value)} />
-        <InputField label="Mileage (km)" field="mileage_km" placeholder="1200" keyboardType="numeric" value={formData.mileage_km} onChangeText={(value) => handleInputChange("mileage_km", value)} />
-        <InputField label="Groupset" field="groupset" placeholder="e.g., Shimano 105" value={formData.groupset} onChangeText={(value) => handleInputChange("groupset", value)} />
-        <InputField label="Frame Size" field="frame_size" placeholder="e.g., S, M, L, XL" value={formData.frame_size} onChangeText={(value) => handleInputChange("frame_size", value)} />
+        {/* Bike Type Dropdown */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
+            Bike Type <Text style={{ color: "#FF4444" }}>*</Text>
+          </Text>
+          <View style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}>
+            <Picker
+              selectedValue={formData.bike_type}
+              onValueChange={(value) => handleInputChange("bike_type", value)}
+              style={{ height: 50 }}
+            >
+              <Picker.Item label="-- Select bike type --" value="" />
+              <Picker.Item label="Road Bike" value="ROAD" />
+              <Picker.Item label="Mountain Bike" value="MTB" />
+              <Picker.Item label="Fixed Gear" value="FIXED" />
+              <Picker.Item label="Gravel Bike" value="GRAVEL" />
+              <Picker.Item label="Folding Bike" value="FOLDING" />
+            </Picker>
+          </View>
+        </View>
+
+        {/* Material Dropdown */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
+            Material <Text style={{ color: "#FF4444" }}>*</Text>
+          </Text>
+          <View style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}>
+            <Picker
+              selectedValue={formData.material}
+              onValueChange={(value) => handleInputChange("material", value)}
+              style={{ height: 50 }}
+            >
+              <Picker.Item label="-- Select material --" value="" />
+              <Picker.Item label="Carbon" value="CARBON" />
+              <Picker.Item label="Aluminum" value="ALUMINUM" />
+              <Picker.Item label="Steel" value="STEEL" />
+            </Picker>
+          </View>
+        </View>
+
+        {/* Brake Type Dropdown */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
+            Brake Type <Text style={{ color: "#FF4444" }}>*</Text>
+          </Text>
+          <View style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}>
+            <Picker
+              selectedValue={formData.brake_type}
+              onValueChange={(value) => handleInputChange("brake_type", value)}
+              style={{ height: 50 }}
+            >
+              <Picker.Item label="-- Select brake type --" value="" />
+              <Picker.Item label="Disc Brake" value="DISC" />
+              <Picker.Item label="Rim Brake" value="RIM" />
+            </Picker>
+          </View>
+        </View>
+
+        <InputField label="Wheel Size" field="wheel_size" placeholder='e.g., 700c, 26", 29"' required value={formData.wheel_size} onChangeText={(value) => handleInputChange("wheel_size", value)} />
+
+        {/* Usage Level Dropdown */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
+            Usage Level <Text style={{ color: "#FF4444" }}>*</Text>
+          </Text>
+          <View style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}>
+            <Picker
+              selectedValue={formData.usage_level}
+              onValueChange={(value) => handleInputChange("usage_level", value)}
+              style={{ height: 50 }}
+            >
+              <Picker.Item label="-- Select usage level --" value="" />
+              <Picker.Item label="Light (Occasional rides)" value="LIGHT" />
+              <Picker.Item label="Medium (Regular use)" value="MEDIUM" />
+              <Picker.Item label="Heavy (Intensive use)" value="HEAVY" />
+            </Picker>
+          </View>
+        </View>
+
+        <InputField label="Mileage (km)" field="mileage_km" placeholder="1200" keyboardType="numeric" required value={formData.mileage_km} onChangeText={(value) => handleInputChange("mileage_km", value)} />
+        <InputField label="Groupset" field="groupset" placeholder="e.g., Shimano 105" required value={formData.groupset} onChangeText={(value) => handleInputChange("groupset", value)} />
+        <InputField label="Frame Size" field="frame_size" placeholder="e.g., S, M, L, XL" required value={formData.frame_size} onChangeText={(value) => handleInputChange("frame_size", value)} />
 
         <Text style={{ fontSize: 16, fontWeight: "bold", color: "#222", marginBottom: 16, marginTop: 16 }}>
           Condition & Info
         </Text>
 
-        <InputField label="Frame Serial" field="frame_serial" placeholder="Serial number" value={formData.frame_serial} onChangeText={(value) => handleInputChange("frame_serial", value)} />
+        <InputField label="Frame Serial" field="frame_serial" placeholder="Serial number" value={formData.frame_serial} required  onChangeText={(value) => handleInputChange("frame_serial", value)} />
         <InputField
           label="Description"
           field="description"
           placeholder="Describe the bike condition, history, and any special features..."
           multiline={true}
+          required 
           value={formData.description}
           onChangeText={(value) => handleInputChange("description", value)}
         />

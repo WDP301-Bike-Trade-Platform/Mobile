@@ -43,46 +43,14 @@ const Login = () => {
 
       console.log("Login response:", response);
 
-      // API returns response.data already extracted, so response is the actual payload
       // Response structure: { ok: true, access_token: "...", refresh_token: "...", user: {...} }
-      let token = null;
-      let userData = null;
-
-      // Try different token property names (access_token is most common)
-      if (response?.access_token) {
-        token = response.access_token;
-        userData = response.user || response;
-      } else if (response?.token) {
-        token = response.token;
-        userData = response.user || response;
-      } else if (response?.data?.access_token) {
-        // Fallback if response structure still has data wrapper
-        token = response.data.access_token;
-        userData = response.data.user || response.data;
-      } else if (response?.data?.token) {
-        token = response.data.token;
-        userData = response.data.user || response.data;
-      } else if (typeof response === "string") {
-        // If response is a plain token string
-        token = response;
-        userData = { email };
-      }
-
-      console.log("Extracted token:", token);
-      console.log("Extracted userData:", userData);
-
-      if (token) {
-        // Save token to secure storage
-        await authStorage.saveToken(token);
-        
-        // Save user data if available
-        if (userData) {
-          await authStorage.saveUserData(userData);
-        }
+      if (response && response.ok && response.access_token) {
+        // Save all login data using the helper method
+        await authStorage.saveLoginResponse(response);
 
         // Update app context
         setIsAuthenticated(true);
-        setUser(userData || { email });
+        setUser(response.user);
 
         setEmail("");
         setPassword("");
@@ -93,7 +61,7 @@ const Login = () => {
           routes: [{ name: "MainApp" }],
         });
       } else {
-        setErrorMessage("No token received from server. Please try again.");
+        setErrorMessage("Invalid login response. Please try again.");
       }
     } catch (error) {
       console.log("Login error object:", error);

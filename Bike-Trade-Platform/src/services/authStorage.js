@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOKEN_KEY = "authToken";
+const REFRESH_TOKEN_KEY = "refreshToken";
 const USER_KEY = "userData";
 
 export const authStorage = {
@@ -33,6 +34,39 @@ export const authStorage = {
       return true;
     } catch (error) {
       console.log("Error removing token:", error);
+      return false;
+    }
+  },
+
+  // Save refresh token
+  saveRefreshToken: async (refreshToken) => {
+    try {
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      return true;
+    } catch (error) {
+      console.log("Error saving refresh token:", error);
+      return false;
+    }
+  },
+
+  // Get refresh token
+  getRefreshToken: async () => {
+    try {
+      const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+      return refreshToken;
+    } catch (error) {
+      console.log("Error getting refresh token:", error);
+      return null;
+    }
+  },
+
+  // Remove refresh token
+  removeRefreshToken: async () => {
+    try {
+      await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+      return true;
+    } catch (error) {
+      console.log("Error removing refresh token:", error);
       return false;
     }
   },
@@ -73,7 +107,7 @@ export const authStorage = {
   // Clear all auth data
   clearAll: async () => {
     try {
-      await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+      await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
       return true;
     } catch (error) {
       console.log("Error clearing auth data:", error);
@@ -87,6 +121,25 @@ export const authStorage = {
       const token = await AsyncStorage.getItem(TOKEN_KEY);
       return !!token;
     } catch (error) {
+      return false;
+    }
+  },
+
+  // Save complete login response
+  saveLoginResponse: async (response) => {
+    try {
+      if (response.access_token) {
+        await AsyncStorage.setItem(TOKEN_KEY, response.access_token);
+      }
+      if (response.refresh_token) {
+        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
+      }
+      if (response.user) {
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      }
+      return true;
+    } catch (error) {
+      console.log("Error saving login response:", error);
       return false;
     }
   },

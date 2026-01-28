@@ -44,15 +44,6 @@ export const createProduct = async (productData) => {
     const response = await instance.post("/listingProduct/create", productData);
     return response.data;
   } catch (error) {
-    if (error?.response?.status === 404) {
-      try {
-        const response = await instance.post("/products", productData);
-        return response.data;
-      } catch (error2) {
-        const response = await instance.post("/vehicles", productData);
-        return response.data;
-      }
-    }
     throw error;
   }
 };

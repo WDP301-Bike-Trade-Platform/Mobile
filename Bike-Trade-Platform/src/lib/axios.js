@@ -3,7 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const instance = axios.create({
   baseURL:
-    process.env.EXPO_PUBLIC_API 
+    process.env.EXPO_PUBLIC_API,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Add request interceptor to include token (skip for auth endpoints)
@@ -26,14 +29,24 @@ instance.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error("Request Error:", error);
     return Promise.reject(error);
   }
 );
 
 // Add response interceptor to handle 401/403 errors
 instance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   async (error) => {
+    console.error("API Error:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+    });
+    
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       // Clear auth data
       try {

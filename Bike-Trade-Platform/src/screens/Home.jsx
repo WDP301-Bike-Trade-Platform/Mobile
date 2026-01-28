@@ -9,9 +9,9 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useStorageContext } from "../provider/StorageProvider";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { TextInput } from "react-native-gesture-handler";
 import { getProducts, getCategories } from "../services/api.products";
 
@@ -30,10 +30,13 @@ const Home = () => {
   const [categories, setCategories] = useState([]);
 
   // Fetch categories and products on mount
-  useEffect(() => {
-    fetchCategories();
-    fetchProducts();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCategories();
+      fetchProducts();
+    }, [])
+  );
+  
 
   const fetchCategories = async () => {
     try {
@@ -127,6 +130,7 @@ const Home = () => {
         onPress={() => navigateToDetail(bike)}
         style={{
           flex: 1,
+          maxWidth: '48%',
           backgroundColor: "#fff",
           borderRadius: 12,
           marginBottom: 16,
@@ -292,7 +296,7 @@ const Home = () => {
             </View>
             <View>
               <Text style={{ fontSize: 18, fontWeight: "bold", color: "#111" }}>
-                BikeMarket
+                CycleTrade
               </Text>
               <Text style={{ fontSize: 10, color: "#999", marginTop: 2 }}>
                 Thu Duc, HCM City

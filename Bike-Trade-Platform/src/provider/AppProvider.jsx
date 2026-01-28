@@ -58,6 +58,7 @@ const AppProvider = ({ children }) => {
     setIsAuthenticated(false);
     setUser(null);
     await AsyncStorage.removeItem("authToken");
+    await AsyncStorage.removeItem("refreshToken");
     await AsyncStorage.removeItem("userData");
   };
 
