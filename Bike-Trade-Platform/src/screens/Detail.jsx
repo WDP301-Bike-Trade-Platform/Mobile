@@ -5,18 +5,19 @@ import {
   ScrollView,
   View,
   Pressable,
-  SafeAreaView,
   Dimensions,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useStorageContext } from "../provider/StorageProvider";
 import { useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Detail = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params;
-  const bike = params?.book;
+  // Handle both old format (book) and new format (product)
+  const product = params?.product || params?.book;
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -27,7 +28,7 @@ const Detail = () => {
     storageData: favorites,
   } = useStorageContext();
 
-  if (!bike) {
+  if (!product) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text style={{ color: "#666" }}>No bike data available</Text>
@@ -35,20 +36,29 @@ const Detail = () => {
     );
   }
 
-  const isFavorite = favorites?.some((fav) => fav.id === bike.id);
+  // Extract data from new format
+  const listingId = product.listing_id || product.id;
+  const vehicleData = product.vehicle || product;
+  const mediaData = product.media || [];
+  const sellerData = product.seller || {};
+  const price = vehicleData.price?.d ? vehicleData.price.d[0] : vehicleData.price;
+
+  // Build images array from media
+  const images = mediaData.length > 0
+    ? mediaData.map(m => m.file_url)
+    : (Array.isArray(vehicleData.image) 
+        ? vehicleData.image 
+        : [vehicleData.image || "https://random-image-pepebigotes.vercel.app/api/random-image"]);
+
+  const isFavorite = favorites?.some((fav) => fav.listing_id === listingId || fav.id === product.id);
 
   const toggleFavorite = () => {
     if (isFavorite) {
-      removeFromFavorites(bike.id);
+      removeFromFavorites(listingId);
     } else {
-      addToFavorites(bike);
+      addToFavorites(product);
     }
   };
-
-  // Images carousel - use bike.image or fallback
-  const images = Array.isArray(bike.image) 
-    ? bike.image 
-    : [bike.image || "https://random-image-pepebigotes.vercel.app/api/random-image"];
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f7f8" }}>
@@ -108,23 +118,6 @@ const Detail = () => {
               size={24}
               color={isFavorite ? "#FF4444" : "#222"}
             />
-          </Pressable>
-          <Pressable
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              justifyContent: "center",
-              alignItems: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-            }}
-          >
-            <MaterialCommunityIcons name="share-outline" size={24} color="#222" />
           </Pressable>
         </View>
       </SafeAreaView>
@@ -247,7 +240,7 @@ const Detail = () => {
                       color: "#666",
                     }}
                   >
-                    {bike.category}
+                    {vehicleData.bike_type || "Bike"}
                   </Text>
                 </View>
                 <Text
@@ -258,7 +251,7 @@ const Detail = () => {
                     lineHeight: 32,
                   }}
                 >
-                  {bike.year} {bike.brand} {bike.model}
+                  {vehicleData.brand} {vehicleData.model}
                 </Text>
               </View>
               <View style={{ alignItems: "flex-end" }}>
@@ -269,7 +262,7 @@ const Detail = () => {
                     color: "#359EFF",
                   }}
                 >
-                  ${bike.price}
+                  {price ? `₫${price.toLocaleString('vi-VN')}` : "N/A"}
                 </Text>
               </View>
             </View>
@@ -288,7 +281,7 @@ const Detail = () => {
                 color="#999"
               />
               <Text style={{ fontSize: 12, color: "#999" }}>
-                Posted 2 days ago • 145 views
+                Posted recently • {product.listing_id ? "Active" : "Listing"}
               </Text>
             </View>
           </View>
@@ -349,7 +342,7 @@ const Detail = () => {
                     color: "#111",
                   }}
                 >
-                  Alex M.
+                  {sellerData.full_name || "Unknown Seller"}
                 </Text>
                 <View
                   style={{
@@ -431,7 +424,7 @@ const Detail = () => {
                     color: "#111",
                   }}
                 >
-                  {bike.brand}
+                  {vehicleData.brand}
                 </Text>
               </View>
 
@@ -467,7 +460,7 @@ const Detail = () => {
                     color: "#111",
                   }}
                 >
-                  {bike.frame_size}cm (M)
+                  {vehicleData.frame_size}cm (M)
                 </Text>
               </View>
 
@@ -503,7 +496,7 @@ const Detail = () => {
                     color: "#111",
                   }}
                 >
-                  {bike.year}
+                  {vehicleData.year}
                 </Text>
               </View>
 
@@ -546,7 +539,7 @@ const Detail = () => {
                       color: "#111",
                     }}
                   >
-                    {bike.condition}
+                    {vehicleData.condition}
                   </Text>
                   <MaterialCommunityIcons
                     name="information"
@@ -580,7 +573,7 @@ const Detail = () => {
                 }}
                 numberOfLines={showFullDescription ? undefined : 3}
               >
-                {bike.description}
+                {vehicleData.description}
               </Text>
               <Pressable onPress={() => setShowFullDescription(!showFullDescription)}>
                 <Text
@@ -670,7 +663,7 @@ const Detail = () => {
                 Location
               </Text>
               <Text style={{ fontSize: 12, color: "#999" }}>
-                San Francisco, CA
+                Thu Duc, HCM City
               </Text>
             </View>
             <View
