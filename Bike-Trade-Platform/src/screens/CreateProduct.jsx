@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from "react";
+import React, { useState, useEffect, useCallback, memo, useRef } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,13 @@ import {
   FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Picker } from "@react-native-picker/picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { uploadMultipleImagesToSupabase } from "../services/api.supabase";
 import { getCategories } from "../services/api.category";
 import { createProduct } from "../services/api.products";
+import Dropdown from "../component/DropDown";
 
 // Separate InputField component to prevent re-renders
 const InputField = memo(({ label, field, placeholder, keyboardType = "default", required = false, multiline = false, value, onChangeText }) => (
@@ -127,6 +127,7 @@ const CreateProduct = () => {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultiple: true,
+        allowsMultipleSelection: true,
         quality: 0.8,
       });
 
@@ -288,28 +289,16 @@ const CreateProduct = () => {
           <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
            Category <Text style={{ color: "#FF4444" }}>*</Text>
           </Text>
-          <View style={{
-            borderWidth: 1,
-            borderColor: "#ddd",
-            borderRadius: 8,
-            overflow: "hidden",
-          }}>
-            <Picker
-              selectedValue={formData.category_id}
-              onValueChange={(value) => handleInputChange("category_id", value)}
-              style={{ height: 50 }}
-            >
-              <Picker.Item label="Please select a category" value="" />
-              {(categories || []).map((category) => (
-                <Picker.Item 
-                  key={category.category_id} 
-                  label={category.name} 
-                  value={category.category_id} 
-                />
-              ))}
-            </Picker>
-          </View>
+          <Dropdown
+            data={(categories || []).map((category) => ({
+              value: category.category_id.toString(),
+              label: category.name,
+            }))}
+            onChange={(item) => handleInputChange("category_id", item.value)}
+            placeholder="Please select a category"
+          />
         </View>
+
         <InputField label="Brand" field="brand" placeholder="e.g., Trek, Giant, Specialized" required value={formData.brand} onChangeText={(value) => handleInputChange("brand", value)} />
         <InputField label="Model" field="model" placeholder="e.g., Escape 3" required value={formData.model} onChangeText={(value) => handleInputChange("model", value)} />
         <InputField label="Year" field="year" placeholder={new Date().getFullYear().toString()} keyboardType="numeric" required value={formData.year} onChangeText={(value) => handleInputChange("year", value)} />
@@ -319,34 +308,9 @@ const CreateProduct = () => {
           Specifications
         </Text>
 
-        {/* Bike Type Dropdown */}
-        <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
-            Bike Type <Text style={{ color: "#FF4444" }}>*</Text>
-          </Text>
-          <View style={{
-            borderWidth: 1,
-            borderColor: "#ddd",
-            borderRadius: 8,
-            overflow: "hidden",
-          }}>
-            <Picker
-              selectedValue={formData.bike_type}
-              onValueChange={(value) => handleInputChange("bike_type", value)}
-              style={{ height: 50 }}
-            >
-              <Picker.Item label="-- Select bike type --" value="" />
-              <Picker.Item label="Road Bike" value="ROAD" />
-              <Picker.Item label="Mountain Bike" value="MTB" />
-              <Picker.Item label="Fixed Gear" value="FIXED" />
-              <Picker.Item label="Gravel Bike" value="GRAVEL" />
-              <Picker.Item label="Folding Bike" value="FOLDING" />
-            </Picker>
-          </View>
-        </View>
-
+        <InputField label="Bike Type" field="bike_type" placeholder="e.g., ROAD, MOUNTAIN, HYBRID" required value={formData.bike_type} onChangeText={(value) => handleInputChange("bike_type", value)} />
         {/* Material Dropdown */}
-        <View style={{ marginBottom: 16 }}>
+        {/* <View style={{ marginBottom: 16 }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
             Material <Text style={{ color: "#FF4444" }}>*</Text>
           </Text>
@@ -356,21 +320,31 @@ const CreateProduct = () => {
             borderRadius: 8,
             overflow: "hidden",
           }}>
-            <Picker
-              selectedValue={formData.material}
-              onValueChange={(value) => handleInputChange("material", value)}
-              style={{ height: 50 }}
-            >
-              <Picker.Item label="-- Select material --" value="" />
-              <Picker.Item label="Carbon" value="CARBON" />
-              <Picker.Item label="Aluminum" value="ALUMINUM" />
-              <Picker.Item label="Steel" value="STEEL" />
-            </Picker>
+            <RNPickerSelect onValueChange={(value) => handleInputChange("material", value)} value={formData.material} placeholder={{ label: '-- Select material --', value: '' }} items={[
+              { label: 'Carbon', value: 'CARBON' },
+              { label: 'Aluminum', value: 'ALUMINUM' },
+              { label: 'Steel', value: 'STEEL' },
+            ]} style={{
+              inputIOS: {
+                height: 50,
+                paddingHorizontal: 12,
+                paddingVertical: 14,
+                fontSize: 14,
+                color: '#222',
+              },
+              inputAndroid: {
+                height: 50,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 14,
+                color: '#222',
+              },
+            }} />
           </View>
-        </View>
+        </View> */}
 
         {/* Brake Type Dropdown */}
-        <View style={{ marginBottom: 16 }}>
+        {/* <View style={{ marginBottom: 16 }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
             Brake Type <Text style={{ color: "#FF4444" }}>*</Text>
           </Text>
@@ -380,22 +354,33 @@ const CreateProduct = () => {
             borderRadius: 8,
             overflow: "hidden",
           }}>
-            <Picker
-              selectedValue={formData.brake_type}
-              onValueChange={(value) => handleInputChange("brake_type", value)}
-              style={{ height: 50 }}
-            >
-              <Picker.Item label="-- Select brake type --" value="" />
-              <Picker.Item label="Disc Brake" value="DISC" />
-              <Picker.Item label="Rim Brake" value="RIM" />
-            </Picker>
+            <RNPickerSelect onValueChange={(value) => handleInputChange("brake_type", value)} value={formData.brake_type} placeholder={{ label: '-- Select brake type --', value: '' }} items={[
+              { label: 'Disc Brake', value: 'DISC' },
+              { label: 'Rim Brake', value: 'RIM' },
+            ]} style={{
+              inputIOS: {
+                height: 50,
+                paddingHorizontal: 12,
+                paddingVertical: 14,
+                fontSize: 14,
+                color: '#222',
+              },
+              inputAndroid: {
+                height: 50,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 14,
+                color: '#222',
+              },
+            }} />
           </View>
-        </View>
-
+        </View> */}
+        <InputField label="Material" field="material" placeholder="e.g., ALUMINUM, STEEL, CARBON" required value={formData.material} onChangeText={(value) => handleInputChange("material", value)} />
+        <InputField label="Brake Type" field="brake_type" placeholder="e.g., RIM, DISC, V-BRAKE" required value={formData.brake_type} onChangeText={(value) => handleInputChange("brake_type", value)} />
         <InputField label="Wheel Size" field="wheel_size" placeholder='e.g., 700c, 26", 29"' required value={formData.wheel_size} onChangeText={(value) => handleInputChange("wheel_size", value)} />
-
+        <InputField label="Usage Level" field="usage_level" placeholder="e.g., LIGHT, MODERATE, HEAVY" required value={formData.usage_level} onChangeText={(value) => handleInputChange("usage_level", value)} />   
         {/* Usage Level Dropdown */}
-        <View style={{ marginBottom: 16 }}>
+        {/* <View style={{ marginBottom: 16 }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
             Usage Level <Text style={{ color: "#FF4444" }}>*</Text>
           </Text>
@@ -405,18 +390,29 @@ const CreateProduct = () => {
             borderRadius: 8,
             overflow: "hidden",
           }}>
-            <Picker
-              selectedValue={formData.usage_level}
-              onValueChange={(value) => handleInputChange("usage_level", value)}
-              style={{ height: 50 }}
-            >
-              <Picker.Item label="-- Select usage level --" value="" />
-              <Picker.Item label="Light (Occasional rides)" value="LIGHT" />
-              <Picker.Item label="Medium (Regular use)" value="MEDIUM" />
-              <Picker.Item label="Heavy (Intensive use)" value="HEAVY" />
-            </Picker>
+            
+            <RNPickerSelect onValueChange={(value) => handleInputChange("usage_level", value)} value={formData.usage_level} placeholder={{ label: '-- Select usage level --', value: '' }} items={[
+              { label: 'Light (Occasional rides)', value: 'LIGHT' },
+              { label: 'Medium (Regular use)', value: 'MEDIUM' },
+              { label: 'Heavy (Intensive use)', value: 'HEAVY' },
+            ]} style={{
+              inputIOS: {
+                height: 50,
+                paddingHorizontal: 12,
+                paddingVertical: 14,
+                fontSize: 14,
+                color: '#222',
+              },
+              inputAndroid: {
+                height: 50,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 14,
+                color: '#222',
+              },
+            }} />
           </View>
-        </View>
+        </View> */}
 
         <InputField label="Mileage (km)" field="mileage_km" placeholder="1200" keyboardType="numeric" required value={formData.mileage_km} onChangeText={(value) => handleInputChange("mileage_km", value)} />
         <InputField label="Groupset" field="groupset" placeholder="e.g., Shimano 105" required value={formData.groupset} onChangeText={(value) => handleInputChange("groupset", value)} />

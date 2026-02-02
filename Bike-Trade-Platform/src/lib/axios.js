@@ -40,12 +40,12 @@ instance.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error("API Error:", {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      url: error.config?.url,
-      data: error.response?.data,
-    });
+    // console.error("API Error:", {
+    //   status: error.response?.status,
+    //   statusText: error.response?.statusText,
+    //   url: error.config?.url,
+    //   data: error.response?.data,
+    // });
     
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       // Clear auth data

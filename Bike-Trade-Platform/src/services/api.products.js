@@ -53,16 +53,7 @@ export const updateProduct = async (listingId, productData) => {
     const response = await instance.patch(`/listingProduct/${listingId}`, productData);
     return response.data;
   } catch (error) {
-    if (error?.response?.status === 404) {
-      try {
-        const response = await instance.put(`/products/${listingId}`, productData);
-        return response.data;
-      } catch (error2) {
-        const response = await instance.put(`/vehicles/${listingId}`, productData);
-        return response.data;
-      }
-    }
-    throw error;
+    console.log('Update product error', error.message);
   }
 };
 

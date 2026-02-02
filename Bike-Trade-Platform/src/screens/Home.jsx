@@ -29,7 +29,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
 
-  // Fetch categories and products on mount
+  // Fetch categories and products whenever tab is focused
   useFocusEffect(
     useCallback(() => {
       fetchCategories();
