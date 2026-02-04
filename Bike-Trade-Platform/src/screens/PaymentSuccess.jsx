@@ -1,40 +1,38 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { getOrderById } from '../services/api.order';
 
-export default function PaymentSuccess() {
+const PaymentSuccess = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const [loading, setLoading] = useState(true);
-  const [order, setOrder] = useState(null);
-  
-  // Lấy orderId từ URL params: biketrade://payment/success?orderId=xxx&orderCode=xxx
-  const { orderId, orderCode } = route.params || {};
+  const [orderInfo, setOrderInfo] = useState(null);
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        if (orderId) {
-          const response = await getOrderById(orderId);
-          setOrder(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching order:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const params = route.params || {};
+    const orderId = params.orderId;
+    const orderCode = params.orderCode;
 
-    fetchOrder();
-  }, [orderId]);
+    if (orderId) {
+      // Simulate fetching order details
+      setTimeout(() => {
+        setOrderInfo({
+          orderId,
+          orderCode,
+        });
+        setLoading(false);
+      }, 1000);
+    } else {
+      setLoading(false);
+    }
+  }, [route.params]);
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#10b981" />
-        <Text style={styles.loadingText}>Đang xác nhận thanh toán...</Text>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Đang xử lý thanh toán...</Text>
       </View>
     );
   }
@@ -42,52 +40,45 @@ export default function PaymentSuccess() {
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <MaterialCommunityIcons name="check-circle" size={80} color="#10b981" />
+        <MaterialCommunityIcons name="check-circle" size={100} color="#4CAF50" />
       </View>
       
       <Text style={styles.title}>Thanh toán thành công!</Text>
       <Text style={styles.subtitle}>
-        Đơn hàng của bạn đã được xác nhận
+        Đơn hàng của bạn đã được xác nhận và đang được xử lý.
       </Text>
 
-      {order && (
-        <View style={styles.orderInfo}>
-          <Text style={styles.orderLabel}>Mã đơn hàng:</Text>
-          <Text style={styles.orderValue}>{order.order_id}</Text>
-          
-          <Text style={styles.orderLabel}>Số tiền:</Text>
-          <Text style={styles.orderValue}>
-            {new Intl.NumberFormat('vi-VN', {
-              style: 'currency',
-              currency: 'VND',
-            }).format(order.deposit_amount)}
-          </Text>
-          
-          <Text style={styles.orderLabel}>Trạng thái:</Text>
-          <Text style={[styles.orderValue, styles.statusSuccess]}>
-            {order.status === 'DEPOSITED' ? 'Đã đặt cọc' : order.status}
-          </Text>
+      {orderInfo && (
+        <View style={styles.infoContainer}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Mã đơn hàng:</Text>
+            <Text style={styles.infoValue}>{orderInfo.orderId?.substring(0, 8)}</Text>
+          </View>
+          {orderInfo.orderCode && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Mã giao dịch:</Text>
+              <Text style={styles.infoValue}>{orderInfo.orderCode}</Text>
+            </View>
+          )}
         </View>
       )}
 
-      <View style={styles.buttonContainer}>
-        <Pressable
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('OrderDetail', { orderId })}
-        >
-          <Text style={styles.primaryButtonText}>Xem chi tiết đơn hàng</Text>
-        </Pressable>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => navigation.navigate('MyOrders')}
+      >
+        <Text style={styles.primaryButtonText}>Xem đơn hàng</Text>
+      </TouchableOpacity>
 
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
-        </Pressable>
-      </View>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('MainApp')}
+      >
+        <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
+      </TouchableOpacity>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -104,51 +95,44 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#6b7280',
-    marginBottom: 32,
     textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 20,
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  orderInfo: {
+  infoContainer: {
     width: '100%',
     backgroundColor: '#f9fafb',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     marginBottom: 32,
   },
-  orderLabel: {
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  infoLabel: {
     fontSize: 14,
     color: '#6b7280',
-    marginTop: 12,
-    marginBottom: 4,
   },
-  orderValue: {
-    fontSize: 16,
+  infoValue: {
+    fontSize: 14,
     color: '#1f2937',
     fontWeight: '600',
   },
-  statusSuccess: {
-    color: '#10b981',
-  },
-  buttonContainer: {
-    width: '100%',
-    gap: 12,
-  },
   primaryButton: {
-    backgroundColor: '#3b82f6',
+    width: '100%',
+    backgroundColor: '#359EFF',
     paddingVertical: 16,
-    paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 12,
   },
   primaryButtonText: {
     color: '#fff',
@@ -156,15 +140,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButton: {
-    backgroundColor: '#f3f4f6',
+    width: '100%',
+    backgroundColor: '#fff',
     paddingVertical: 16,
-    paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   secondaryButtonText: {
     color: '#1f2937',
     fontSize: 16,
     fontWeight: '600',
   },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6b7280',
+  },
 });
+
+export default PaymentSuccess;

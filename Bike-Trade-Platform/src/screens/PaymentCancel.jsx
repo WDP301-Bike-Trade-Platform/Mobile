@@ -1,51 +1,56 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-export default function PaymentCancel() {
+const PaymentCancel = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  
-  // Lấy orderId từ URL params: biketrade://payment/cancel?orderId=xxx
-  const { orderId } = route.params || {};
+  const params = route.params || {};
+  const orderId = params.orderId;
 
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <MaterialCommunityIcons name="close-circle" size={80} color="#ef4444" />
+        <MaterialCommunityIcons name="close-circle" size={100} color="#EF4444" />
       </View>
       
       <Text style={styles.title}>Thanh toán đã bị hủy</Text>
       <Text style={styles.subtitle}>
-        Giao dịch của bạn chưa được hoàn tất
+        Bạn đã hủy giao dịch thanh toán. Đơn hàng của bạn chưa được xử lý.
       </Text>
 
       {orderId && (
-        <View style={styles.orderInfo}>
-          <Text style={styles.orderLabel}>Mã đơn hàng:</Text>
-          <Text style={styles.orderValue}>{orderId}</Text>
+        <View style={styles.infoContainer}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Mã đơn hàng:</Text>
+            <Text style={styles.infoValue}>{orderId.substring(0, 8)}</Text>
+          </View>
         </View>
       )}
 
-      <View style={styles.buttonContainer}>
-        <Pressable
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Cart')}
-        >
-          <Text style={styles.primaryButtonText}>Thử lại thanh toán</Text>
-        </Pressable>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => {
+          if (orderId) {
+            navigation.navigate('OrderDetail', { orderId });
+          } else {
+            navigation.navigate('Cart');
+          }
+        }}
+      >
+        <Text style={styles.primaryButtonText}>Thử lại</Text>
+      </TouchableOpacity>
 
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
-        </Pressable>
-      </View>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('MainApp')}
+      >
+        <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
+      </TouchableOpacity>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -62,42 +67,44 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#6b7280',
-    marginBottom: 32,
     textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 20,
   },
-  orderInfo: {
+  infoContainer: {
     width: '100%',
     backgroundColor: '#f9fafb',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     marginBottom: 32,
   },
-  orderLabel: {
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  infoLabel: {
     fontSize: 14,
     color: '#6b7280',
-    marginBottom: 4,
   },
-  orderValue: {
-    fontSize: 16,
+  infoValue: {
+    fontSize: 14,
     color: '#1f2937',
     fontWeight: '600',
   },
-  buttonContainer: {
-    width: '100%',
-    gap: 12,
-  },
   primaryButton: {
-    backgroundColor: '#3b82f6',
+    width: '100%',
+    backgroundColor: '#359EFF',
     paddingVertical: 16,
-    paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 12,
   },
   primaryButtonText: {
     color: '#fff',
@@ -105,11 +112,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButton: {
-    backgroundColor: '#f3f4f6',
+    width: '100%',
+    backgroundColor: '#fff',
     paddingVertical: 16,
-    paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   secondaryButtonText: {
     color: '#1f2937',
@@ -117,3 +126,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export default PaymentCancel;

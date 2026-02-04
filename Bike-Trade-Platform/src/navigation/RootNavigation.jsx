@@ -26,9 +26,48 @@ import PaymentCancel from "../screens/PaymentCancel";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
+import * as Linking from 'expo-linking';
 
 const Stack = createStackNavigator();
 const Tabs = createBottomTabNavigator();
+
+// Deep linking configuration cho Expo Go
+const linking = {
+  prefixes: [
+    'biketrade://',
+    'exp://192.168.2.4:8081/--/', // Thay IP của bạn
+    Linking.createURL('/'),
+  ],
+  config: {
+    screens: {
+      MainApp: {
+        screens: {
+          Home: 'home',
+          Favorites: 'favorites',
+          Chat: 'chat',
+          Profile: 'profile',
+        }
+      },
+      PaymentSuccess: {
+        path: 'payment/success',
+        parse: {
+          orderId: (orderId) => orderId,
+          orderCode: (orderCode) => orderCode,
+        }
+      },
+      PaymentCancel: {
+        path: 'payment/cancel',
+        parse: {
+          orderId: (orderId) => orderId,
+        }
+      },
+      Detail: 'detail/:listingId',
+      OrderDetail: 'order/:orderId',
+      Checkout: 'checkout',
+      Cart: 'cart',
+    }
+  }
+};
 
 const BottomTabs = ({ isAuthenticated }) => {
   const navigation = useNavigation();
@@ -156,30 +195,9 @@ const BottomTabs = ({ isAuthenticated }) => {
 const RootNavigation = () => {
   const { isAuthenticated, authLoading } = useAppContext();
 
-  // Cấu hình Deep Linking cho PayOS
-  const linking = {
-    prefixes: ['biketrade://'],
-    config: {
-      screens: {
-        MainApp: {
-          screens: {
-            Home: 'home',
-            Favorites: 'favorites',
-            Chat: 'chat',
-            Profile: 'profile',
-          },
-        },
-        PaymentSuccess: 'payment/success',
-        PaymentCancel: 'payment/cancel',
-        OrderDetail: 'order/:orderId',
-        Detail: 'listing/:listingId',
-      },
-    },
-  };
-
   if (authLoading) {
     return (
-      <NavigationContainer>
+      <NavigationContainer linking={linking}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator size="large" color="#359EFF" />
         </View>
@@ -314,7 +332,6 @@ const RootNavigation = () => {
           component={PaymentSuccess}
           options={{
             headerShown: false,
-            title: "Thanh toán thành công",
           }}
         />
         <Stack.Screen
@@ -322,7 +339,6 @@ const RootNavigation = () => {
           component={PaymentCancel}
           options={{
             headerShown: false,
-            title: "Thanh toán bị hủy",
           }}
         />
       </Stack.Navigator>

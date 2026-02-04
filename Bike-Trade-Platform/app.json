@@ -2,20 +2,19 @@
   "expo": {
     "name": "Bike-Trade-Platform",
     "slug": "Bike-Trade-Platform",
+    "scheme": "biketrade",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "biketrade",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.biketrade.platform"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -23,18 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.biketrade.platform",
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "data": [
-            {
-              "scheme": "biketrade"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+      "package": "com.anonymous.BikeTradePlatform"
     },
     "web": {
       "favicon": "./assets/favicon.png"
