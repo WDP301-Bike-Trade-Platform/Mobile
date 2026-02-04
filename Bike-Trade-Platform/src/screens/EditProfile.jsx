@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Text,
   View,
@@ -8,11 +8,13 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import { Calendar } from "react-native-calendars";
 import { getUser, updateUser } from "../services/api.user";
 import { uploadImageToSupabase } from "../services/api.supabase";
 
@@ -35,23 +37,64 @@ const EditProfile = () => {
   const [bankName, setBankName] = useState("");
 
   const [genderDropdownOpen, setGenderDropdownOpen] = useState(false);
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const [monthDropdownOpen, setMonthDropdownOpen] = useState(false);
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+    }, [])
+  );
 
   const fetchUserData = async () => {
     try {
       setLoading(true);
       const data = await getUser();
+      console.log("Full API response:", JSON.stringify(data, null, 2));
+      
       const userData = data?.data || data;
+      console.log("User data:", JSON.stringify(userData, null, 2));
       setUserProfile(userData);
 
       // Populate form fields
       setFullName(userData?.full_name || "");
       setPhone(userData?.phone || "");
       setEmail(userData?.email || "");
-      setDob(userData?.profile?.dob || "");
+      
+      // Format date properly - convert to YYYY-MM-DD if exists
+      const dobValue = userData?.profile?.dob;
+      console.log("DOB value from API:", dobValue);
+      
+      if (dobValue) {
+        try {
+          const date = new Date(dobValue);
+          console.log("Parsed date object:", date);
+          
+          if (!isNaN(date.getTime())) {
+            const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
+            console.log("Formatted date (YYYY-MM-DD):", formattedDate);
+            setDob(formattedDate);
+          } else {
+            console.log("Invalid date");
+            setDob("");
+          }
+        } catch (e) {
+          console.log("Error parsing date:", e);
+          setDob("");
+        }
+      } else {
+        console.log("No DOB value found");
+        setDob("");
+      }
+      
       setGender(userData?.profile?.gender || "");
       setNationalId(userData?.profile?.national_id || "");
       setBankAccount(userData?.profile?.bank_account || "");
@@ -114,11 +157,11 @@ const EditProfile = () => {
       const updateData = {
         full_name: fullName,
         phone: phone,
-        ...(dob && { dob }),
-        ...(gender && { gender }),
-        ...(nationalId && { national_id: nationalId }),
-        ...(bankAccount && { bank_account: bankAccount }),
-        ...(bankName && { bank_name: bankName }),
+        ...(dob && dob.trim() && { dob: dob.trim() }),
+        ...(gender && gender.trim() && { gender: gender.trim() }),
+        ...(nationalId && nationalId.trim() && { national_id: nationalId.trim() }),
+        ...(bankAccount && bankAccount.trim() && { bank_account: bankAccount.trim() }),
+        ...(bankName && bankName.trim() && { bank_name: bankName.trim() }),
         ...(avatarUrl && { avatar_url: avatarUrl }),
       };
 
@@ -316,7 +359,9 @@ const EditProfile = () => {
               placeholder="Enter full name"
               placeholderTextColor="#9ca3af"
               value={fullName}
-              onChangeText={setFullName}
+              onChangeText={(text) => {
+                setFullName(text);
+              }}
               editable={!submitting}
             />
           </View>
@@ -371,22 +416,25 @@ const EditProfile = () => {
             <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827", marginBottom: 8 }}>
               Date of Birth
             </Text>
-            <TextInput
+            <Pressable
+              onPress={() => setCalendarVisible(true)}
+              disabled={submitting}
               style={{
                 borderWidth: 1,
                 borderColor: "#e5e7eb",
                 borderRadius: 8,
                 paddingHorizontal: 12,
                 paddingVertical: 12,
-                fontSize: 14,
-                color: "#111827",
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#9ca3af"
-              value={dob}
-              onChangeText={setDob}
-              editable={!submitting}
-            />
+            >
+              <Text style={{ fontSize: 14, color: dob ? "#111827" : "#9ca3af" }}>
+                {dob || "Select Date of Birth"}
+              </Text>
+              <MaterialCommunityIcons name="calendar" size={20} color="#6b7280" />
+            </Pressable>
           </View>
 
           {/* Gender */}
@@ -489,6 +537,221 @@ const EditProfile = () => {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Calendar Modal */}
+      <Modal
+        visible={calendarVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setCalendarVisible(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={() => setCalendarVisible(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 12,
+              padding: 16,
+              width: "90%",
+              maxWidth: 400,
+              maxHeight: "80%",
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>
+                Select Date of Birth
+              </Text>
+              <Pressable onPress={() => setCalendarVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#111827" />
+              </Pressable>
+            </View>
+
+            {/* Year and Month Selectors */}
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+              {/* Year Selector */}
+              <View style={{ flex: 1 }}>
+                <Pressable
+                  onPress={() => {
+                    setYearDropdownOpen(!yearDropdownOpen);
+                    setMonthDropdownOpen(false);
+                  }}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "#e5e7eb",
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 14, color: "#111827", fontWeight: "600" }}>
+                    {selectedYear}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name={yearDropdownOpen ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color="#6b7280"
+                  />
+                </Pressable>
+
+                {yearDropdownOpen && (
+                  <ScrollView
+                    style={{
+                      position: "absolute",
+                      top: 45,
+                      left: 0,
+                      right: 0,
+                      maxHeight: 200,
+                      borderWidth: 1,
+                      borderColor: "#e5e7eb",
+                      borderRadius: 8,
+                      backgroundColor: "#fff",
+                      zIndex: 1000,
+                    }}
+                    nestedScrollEnabled={true}
+                  >
+                    {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                      <Pressable
+                        key={year}
+                        onPress={() => {
+                          setSelectedYear(year);
+                          setYearDropdownOpen(false);
+                        }}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderBottomWidth: 1,
+                          borderBottomColor: "#f3f4f6",
+                          backgroundColor: selectedYear === year ? "#f3f9ff" : "#fff",
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, color: "#111827" }}>{year}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+
+              {/* Month Selector */}
+              <View style={{ flex: 1 }}>
+                <Pressable
+                  onPress={() => {
+                    setMonthDropdownOpen(!monthDropdownOpen);
+                    setYearDropdownOpen(false);
+                  }}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "#e5e7eb",
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 14, color: "#111827", fontWeight: "600" }}>
+                    {monthNames[selectedMonth - 1]}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name={monthDropdownOpen ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color="#6b7280"
+                  />
+                </Pressable>
+
+                {monthDropdownOpen && (
+                  <ScrollView
+                    style={{
+                      position: "absolute",
+                      top: 45,
+                      left: 0,
+                      right: 0,
+                      maxHeight: 200,
+                      borderWidth: 1,
+                      borderColor: "#e5e7eb",
+                      borderRadius: 8,
+                      backgroundColor: "#fff",
+                      zIndex: 1000,
+                    }}
+                    nestedScrollEnabled={true}
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <Pressable
+                        key={month}
+                        onPress={() => {
+                          setSelectedMonth(month);
+                          setMonthDropdownOpen(false);
+                        }}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderBottomWidth: 1,
+                          borderBottomColor: "#f3f4f6",
+                          backgroundColor: selectedMonth === month ? "#f3f9ff" : "#fff",
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, color: "#111827" }}>{monthNames[month - 1]}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            </View>
+
+            <Calendar
+              key={`${selectedYear}-${selectedMonth}`}
+              current={`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`}
+              maxDate={new Date().toISOString().split('T')[0]}
+              onDayPress={(day) => {
+                setDob(day.dateString);
+                setCalendarVisible(false);
+              }}
+              onMonthChange={(date) => {
+                setSelectedYear(date.year);
+                setSelectedMonth(date.month);
+              }}
+              markedDates={
+                dob
+                  ? {
+                      [dob]: {
+                        selected: true,
+                        selectedColor: "#389cfa",
+                      },
+                    }
+                  : {}
+              }
+              theme={{
+                selectedDayBackgroundColor: "#389cfa",
+                selectedDayTextColor: "#ffffff",
+                todayTextColor: "#389cfa",
+                arrowColor: "#389cfa",
+                monthTextColor: "#111827",
+                textMonthFontWeight: "700",
+                textDayFontSize: 14,
+                textMonthFontSize: 16,
+              }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };

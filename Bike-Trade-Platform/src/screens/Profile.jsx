@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Text,
   View,
@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../provider/AppProvider";
 import { getUser } from "../services/api.user";
 
@@ -26,9 +26,11 @@ const Profile = () => {
     orders: 8,
   });
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+   useFocusEffect(
+      useCallback(() => {
+        fetchUserData();
+      }, [])
+    );
 
   const fetchUserData = async () => {
     try {
@@ -306,13 +308,19 @@ const Profile = () => {
           <MenuItem
             icon="package-variant"
             label="My Orders"
-            onPress={() => alert("Navigate to Orders")}
+            onPress={() => navigation.navigate("MyOrders")}
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
           <MenuItem
             icon="heart"
             label="Bicycle Wishlist"
             onPress={() => navigation.navigate("Favorites")}
+          />
+          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
+          <MenuItem
+            icon="map-marker"
+            label="My Addresses"
+            onPress={() => navigation.navigate("ManageAddresses")}
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
           <MenuItem

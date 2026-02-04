@@ -11,3 +11,8 @@ export const verifyIOTP = async (otpInfo) => {
   const response = await instance.post("/auth/verify-otp", otpInfo);
   return response.data;
 }
+
+export const refreshToken = async (refreshToken) => {
+  const response = await instance.post("/auth/refresh-token", { refreshToken });
+  return response.data;
+}

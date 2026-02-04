@@ -9,10 +9,28 @@ const AppProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [tokenRefreshListener, setTokenRefreshListener] = useState(null);
 
   // Check if user is already logged in on app start
   useEffect(() => {
     checkAuthStatus();
+    
+    // Set up response interceptor to detect when refresh token fails
+    const interceptor = instance.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        // If refresh token failed (401 after retry), logout user
+        if (error.config?._retry && error.response?.status === 401) {
+          await logout();
+        }
+        return Promise.reject(error);
+      }
+    );
+    
+    // Cleanup interceptor on unmount
+    return () => {
+      instance.interceptors.response.eject(interceptor);
+    };
   }, []);
 
   const checkAuthStatus = async () => {

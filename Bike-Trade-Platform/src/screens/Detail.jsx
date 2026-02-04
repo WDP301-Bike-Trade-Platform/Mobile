@@ -17,7 +17,7 @@ const Detail = () => {
   const navigation = useNavigation();
   const params = route.params;
   // Handle both old format (book) and new format (product)
-  const product = params?.product || params?.book;
+  const product = params?.product
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -775,6 +775,14 @@ const Detail = () => {
           </Text>
         </Pressable>
         <Pressable
+          onPress={() => navigation.navigate('Checkout', { 
+            listing: {
+              id: listingId,
+              title: `${vehicleData.brand} ${vehicleData.model}`,
+              price: price,
+              ...product
+            }
+          })}
           style={{
             flex: 2,
             height: 56,
@@ -798,7 +806,7 @@ const Detail = () => {
               color: "#111",
             }}
           >
-            Book Now
+            Buy Now
           </Text>
           <MaterialCommunityIcons
             name="arrow-right"

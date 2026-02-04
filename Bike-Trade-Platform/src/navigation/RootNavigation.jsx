@@ -10,9 +10,19 @@ import Register from "../screens/Register";
 import OTPVerification from "../screens/OTPVerification";
 import Profile from "../screens/Profile";
 import EditProfile from "../screens/EditProfile";
+import ManageAddresses from "../screens/ManageAddresses";
+import AddEditAddress from "../screens/AddEditAddress";
 import Chat from "../screens/Chat";
 import Conversation from "../screens/Conversation";
+import MyOrders from "../screens/MyOrders";
+import OrderDetail from "../screens/OrderDetail";
+import Checkout from "../screens/Checkout";
+import SellerOrders from "../screens/SellerOrders";
+import CartCheckout from "../screens/CartCheckout";
+import Cart from '../screens/Cart';
 import CreateProduct from "../screens/CreateProduct";
+import PaymentSuccess from "../screens/PaymentSuccess";
+import PaymentCancel from "../screens/PaymentCancel";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
@@ -146,6 +156,27 @@ const BottomTabs = ({ isAuthenticated }) => {
 const RootNavigation = () => {
   const { isAuthenticated, authLoading } = useAppContext();
 
+  // Cấu hình Deep Linking cho PayOS
+  const linking = {
+    prefixes: ['biketrade://'],
+    config: {
+      screens: {
+        MainApp: {
+          screens: {
+            Home: 'home',
+            Favorites: 'favorites',
+            Chat: 'chat',
+            Profile: 'profile',
+          },
+        },
+        PaymentSuccess: 'payment/success',
+        PaymentCancel: 'payment/cancel',
+        OrderDetail: 'order/:orderId',
+        Detail: 'listing/:listingId',
+      },
+    },
+  };
+
   if (authLoading) {
     return (
       <NavigationContainer>
@@ -157,7 +188,7 @@ const RootNavigation = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator>
         <Stack.Screen
           name="MainApp"
@@ -209,6 +240,20 @@ const RootNavigation = () => {
           }}
         />
         <Stack.Screen
+          name="ManageAddresses"
+          component={ManageAddresses}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="AddEditAddress"
+          component={AddEditAddress}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="ChatDetail"
           component={Chat}
           options={{
@@ -220,6 +265,64 @@ const RootNavigation = () => {
           component={Conversation}
           options={{
             headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="MyOrders"
+          component={MyOrders}
+          options={{
+            headerShown: false,
+          }}
+        />        
+        <Stack.Screen
+          name="OrderDetail"
+          component={OrderDetail}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="Checkout"
+          component={Checkout}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="SellerOrders"
+          component={SellerOrders}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="CartCheckout"
+          component={CartCheckout}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="Cart"
+          component={Cart}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="PaymentSuccess"
+          component={PaymentSuccess}
+          options={{
+            headerShown: false,
+            title: "Thanh toán thành công",
+          }}
+        />
+        <Stack.Screen
+          name="PaymentCancel"
+          component={PaymentCancel}
+          options={{
+            headerShown: false,
+            title: "Thanh toán bị hủy",
           }}
         />
       </Stack.Navigator>

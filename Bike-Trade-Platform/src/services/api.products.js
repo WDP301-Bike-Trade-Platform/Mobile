@@ -3,7 +3,7 @@ import { instance } from "../lib/axios";
 export const getProducts = async () => {
   try {
     // Try /listings first
-    const response = await instance.get("/listingProduct");
+    const response = await instance.get("/listingProduct?status=APPROVED");
     return response.data;
   } catch (error) {
     if (error?.response?.status === 404) {
