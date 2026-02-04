@@ -18,7 +18,6 @@ import MyOrders from "../screens/MyOrders";
 import OrderDetail from "../screens/OrderDetail";
 import Checkout from "../screens/Checkout";
 import SellerOrders from "../screens/SellerOrders";
-import CartCheckout from "../screens/CartCheckout";
 import Cart from '../screens/Cart';
 import CreateProduct from "../screens/CreateProduct";
 import PaymentSuccess from "../screens/PaymentSuccess";
@@ -83,6 +82,8 @@ const BottomTabs = ({ isAuthenticated }) => {
               iconName = "home";
             } else if (route.name === "Favorites") {
               iconName = "heart";
+            } else if (route.name === "Cart") {
+              iconName = "cart";
             } else if (route.name === "Chat") {
               iconName = "chat";
             } else if (route.name === "Profile") {
@@ -119,11 +120,18 @@ const BottomTabs = ({ isAuthenticated }) => {
           component={Home}
           options={{ title: "Home", headerShown: true }}
         />
-        {isAuthenticated && (
+        {/* {isAuthenticated && (
           <Tabs.Screen
             name="Favorites"
             component={Favorites}
             options={{ title: "Wishlist" }}
+          />
+        )} */}
+        {isAuthenticated && (
+          <Tabs.Screen
+            name="Cart"
+            component={Cart}
+            options={{ title: "Cart", headerShown: true }}
           />
         )}
         {/* Create Product button (placeholder - no screen here) */}
@@ -307,6 +315,13 @@ const RootNavigation = () => {
           }}
         />
         <Stack.Screen
+          name="Favorites"
+          component={Favorites}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="SellerOrders"
           component={SellerOrders}
           options={{
@@ -314,20 +329,7 @@ const RootNavigation = () => {
           }}
         />
         <Stack.Screen
-          name="CartCheckout"
-          component={CartCheckout}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="Cart"
-          component={Cart}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
+
           name="PaymentSuccess"
           component={PaymentSuccess}
           options={{

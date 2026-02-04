@@ -12,14 +12,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { createOrder } from '../services/api.order';
-import { createPaymentForListing } from '../services/api.payment';
+import { createOrder, checkoutCart } from '../services/api.order';
+import { createPaymentForListing, createPaymentForOrder } from '../services/api.payment';
 import { getMyAddresses, getDefaultAddress } from '../services/api.address';
 import HeaderBar from '../component/HeaderBar';
 import { formatPrice } from '../utils/formatters';
 
 const Checkout = ({ route, navigation }) => {
-  const { listing } = route.params;
+  const { listing, cartItems, totalAmount } = route.params;
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -66,29 +66,72 @@ const Checkout = ({ route, navigation }) => {
     try {
       setLoading(true);
 
-      const response = await createPaymentForListing(listing.listing_id);
-      const paymentData = response?.data || response;
+      // Check if checkout from cart or single listing
+      if (cartItems && cartItems.length > 0) {
+        // Checkout from cart
+        const checkoutData = {
+          shippingAddressId: selectedAddress.address_id,
+          note: note || 'Checkout from cart',
+        };
 
-      if (paymentData.paymentLink) {
-        const supported = await Linking.canOpenURL(paymentData.paymentLink);
-        if (supported) {
-          await Linking.openURL(paymentData.paymentLink);
-          Alert.alert(
-            'Order Placed',
-            'Please complete the payment in your browser',
-            [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
-          );
-        } else {
-          Alert.alert('Error', 'Cannot open payment link');
+        const result = await checkoutCart(checkoutData);
+        const orders = result?.data || result;
+
+        if (Array.isArray(orders) && orders.length > 0) {
+          if (orders.length === 1) {
+            // Single order - proceed to payment
+            const orderId = orders[0].order_id;
+            const response = await createPaymentForOrder(orderId);
+            const paymentData = response?.data || response;
+
+            if (paymentData.paymentLink) {
+              const supported = await Linking.canOpenURL(paymentData.paymentLink);
+              if (supported) {
+                await Linking.openURL(paymentData.paymentLink);
+                Alert.alert(
+                  'Order Placed',
+                  'Please complete the payment in your browser',
+                  [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
+                );
+              } else {
+                Alert.alert('Error', 'Cannot open payment link');
+              }
+            }
+          } else {
+            // Multiple orders - show success message
+            Alert.alert(
+              'Success',
+              `${orders.length} orders created successfully`,
+              [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
+            );
+          }
         }
-      } else {
-        Alert.alert('Success', 'Order placed successfully', [
-          { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
-        ]);
+      } else if (listing) {
+        // Checkout single listing
+        const response = await createPaymentForListing(listing.listing_id);
+        const paymentData = response?.data || response;
+
+        if (paymentData.paymentLink) {
+          const supported = await Linking.canOpenURL(paymentData.paymentLink);
+          if (supported) {
+            await Linking.openURL(paymentData.paymentLink);
+            Alert.alert(
+              'Order Placed',
+              'Please complete the payment in your browser',
+              [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
+            );
+          } else {
+            Alert.alert('Error', 'Cannot open payment link');
+          }
+        } else {
+          Alert.alert('Success', 'Order placed successfully', [
+            { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
+          ]);
+        }
       }
     } catch (error) {
       console.error('Error during checkout:', error);
-      Alert.alert('Error', 'Failed to complete checkout');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to complete checkout');
     } finally {
       setLoading(false);
     }
@@ -104,14 +147,39 @@ const Checkout = ({ route, navigation }) => {
         {/* Product Summary */}
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
-            Product
+            {cartItems && cartItems.length > 0 ? `Products (${cartItems.length})` : 'Product'}
           </Text>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 8 }} numberOfLines={2}>
-            {listing.title}
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
-            đ{formatPrice(listing.price)}
-          </Text>
+          {cartItems && cartItems.length > 0 ? (
+            cartItems.map((item, index) => (
+              <View
+                key={item.cart_item_id || index}
+                style={{
+                  paddingVertical: 12,
+                  borderTopWidth: index > 0 ? 1 : 0,
+                  borderTopColor: '#f3f4f6',
+                }}
+              >
+                <Text
+                  style={{ fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 4 }}
+                  numberOfLines={2}
+                >
+                  {item.listing?.vehicle?.brand} {item.listing?.vehicle?.model}
+                </Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#389cfa' }}>
+                  đ{formatPrice(item.listing?.vehicle?.price || 0)}
+                </Text>
+              </View>
+            ))
+          ) : listing ? (
+            <>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 8 }} numberOfLines={2}>
+                {listing.title}
+              </Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
+                đ{formatPrice(listing.price)}
+              </Text>
+            </>
+          ) : null}
         </View>
 
         {/* Shipping Address */}
@@ -197,10 +265,19 @@ const Checkout = ({ route, navigation }) => {
               Total
             </Text>
             <Text style={{ fontSize: 20, fontWeight: '700', color: '#389cfa' }}>
-              đ{formatPrice(listing.price)}
+              đ{formatPrice(totalAmount || listing?.price || 0)}
             </Text>
           </View>
         </View>
+
+        {/* Note for cart checkout */}
+        {cartItems && cartItems.length > 0 && (
+          <View style={{ backgroundColor: '#fffbeb', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#92400e', fontStyle: 'italic' }}>
+              * Your cart will be split into separate orders per seller
+            </Text>
+          </View>
+        )}
 
         {/* Checkout Button */}
         <Pressable

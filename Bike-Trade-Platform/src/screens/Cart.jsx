@@ -115,7 +115,7 @@ const Cart = ({ navigation }) => {
       return;
     }
 
-    navigation.navigate('CartCheckout', {
+    navigation.navigate('Checkout', {
       cartItems: cart.items,
       totalAmount,
     });
@@ -124,7 +124,7 @@ const Cart = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-        <HeaderBar title="My Cart" onBack={() => navigation.goBack()} />
+        {/* <HeaderBar title="My Cart" onBack={() => navigation.goBack()} />
         <View
           style={{
             flex: 1,
@@ -132,15 +132,19 @@ const Cart = ({ navigation }) => {
             alignItems: 'center',
           }}
         >
-          <ActivityIndicator size="large" color="#389cfa" />
-        </View>
+          <ActivityIndicator size="large" color="#359EFF" />
+        </View> */}
+        <ActivityIndicator size="large" color="#359EFF" />
+        <Text style={{ marginTop: 12, color: "#999" }}>
+          Loading cart...
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-      <HeaderBar
+      {/* <HeaderBar
         title="My Cart"
         onBack={() => navigation.goBack()}
         rightAction={
@@ -152,14 +156,14 @@ const Cart = ({ navigation }) => {
             </Pressable>
           )
         }
-      />
+      /> */}
 
       {/* Cart Summary */}
       {cart?.items?.length > 0 && (
         <View
           style={{
             backgroundColor: '#fff',
-            padding: 16,
+            padding: 10,
             borderBottomWidth: 1,
             borderBottomColor: '#e5e7eb',
           }}
@@ -174,7 +178,7 @@ const Cart = ({ navigation }) => {
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#6b7280' }}>
               {itemCount} {itemCount === 1 ? 'item' : 'items'} in cart
             </Text>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#359EFF' }}>
               đ{formatPrice(totalAmount)}
             </Text>
           </View>
@@ -206,7 +210,6 @@ const Cart = ({ navigation }) => {
             <CartItemCard
               key={item.cart_item_id}
               item={item}
-              onUpdateQuantity={handleUpdateQuantity}
               onRemove={handleRemoveItem}
             />
           ))
@@ -222,10 +225,9 @@ const Cart = ({ navigation }) => {
             left: 0,
             right: 0,
             backgroundColor: '#fff',
-            padding: 16,
+            padding: 10,
             borderTopWidth: 1,
             borderTopColor: '#e5e7eb',
-            paddingBottom: 32,
           }}
         >
           <Pressable
@@ -233,7 +235,7 @@ const Cart = ({ navigation }) => {
             style={({ pressed }) => ({
               paddingVertical: 16,
               borderRadius: 12,
-              backgroundColor: '#389cfa',
+              backgroundColor: '#359EFF',
               alignItems: 'center',
               opacity: pressed ? 0.7 : 1,
             })}

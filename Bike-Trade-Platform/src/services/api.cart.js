@@ -1,4 +1,4 @@
-import axios from '../lib/axios';
+import { instance as axios } from '../lib/axios';
 
 /**
  * Add item to cart

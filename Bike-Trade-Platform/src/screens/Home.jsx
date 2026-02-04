@@ -6,6 +6,7 @@ import {
   View,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
@@ -14,6 +15,7 @@ import { useStorageContext } from "../provider/StorageProvider";
 import { useState, useEffect, use, useCallback } from "react";
 import { TextInput } from "react-native-gesture-handler";
 import { getProducts, getCategories } from "../services/api.products";
+import { addToCart as addToCartApi } from "../services/api.cart";
 
 const Home = () => {
   const navigation = useNavigation();
@@ -109,6 +111,18 @@ const Home = () => {
 
   const navigateToDetail = (product) => {
     navigation.navigate("Detail", { product: product });
+  };
+
+  const handleAddToCart = async (bike, event) => {
+    event.stopPropagation();
+    try {
+      const listingId = bike.listing_id || bike.id;
+      await addToCartApi(listingId, 1);
+      Alert.alert('Success', 'Added to cart successfully');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to add to cart');
+    }
   };
 
   const BikeCard = ({ bike }) => {
@@ -248,12 +262,32 @@ const Home = () => {
           </View>
 
           {/* Seller Info */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginBottom: 8 }}>
             <MaterialCommunityIcons name="account" size={12} color="#999" />
             <Text style={{ fontSize: 10, color: "#999" }} numberOfLines={1}>
               {sellerInfo.full_name || "Unknown"}
             </Text>
           </View>
+
+          {/* Add to Cart Button */}
+          <Pressable
+            onPress={(e) => handleAddToCart(bike, e)}
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? "#2d8de8" : "#389cfa",
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+            })}
+          >
+            <MaterialCommunityIcons name="cart-plus" size={14} color="#fff" />
+            <Text style={{ fontSize: 11, fontWeight: "600", color: "#fff" }}>
+              Add to Cart
+            </Text>
+          </Pressable>
         </View>
       </Pressable>
     );

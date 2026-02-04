@@ -13,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useStorageContext } from "../provider/StorageProvider";
 import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import HeaderBar from "../component/HeaderBar";
 
 const Favorites = () => {
   const navigation = useNavigation();
@@ -70,6 +71,7 @@ const Favorites = () => {
     const price = vehicleData.price?.d ? vehicleData.price.d[0] : vehicleData.price;
 
     return (
+        
       <Pressable
         onPress={() => navigation.navigate("Detail", { product: bike })}
         style={{
@@ -85,7 +87,9 @@ const Favorites = () => {
           shadowRadius: 4,
           elevation: 2,
         }}
-      >
+      > 
+     
+
         {/* Card Content */}
         <View style={{ flexDirection: "row", gap: 16, padding: 16 }}>
           {/* Image */}
@@ -263,7 +267,7 @@ const Favorites = () => {
           borderBottomColor: "#f0f0f0",
         }}
       >
-        <View
+        {/* <View
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
@@ -282,8 +286,11 @@ const Favorites = () => {
             My Listings
           </Text>
           
-        </View>
-
+        </View> */}
+           <HeaderBar
+          title="Favorites"
+          onBack={() => navigation.goBack()}
+        />
         {/* Filter Tabs */}
         <View
           style={{

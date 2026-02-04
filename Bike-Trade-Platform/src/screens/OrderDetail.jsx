@@ -14,7 +14,7 @@ import { getOrderById, cancelOrder } from '../services/api.order';
 import { createPaymentForOrder } from '../services/api.payment';
 import HeaderBar from '../component/HeaderBar';
 import StatusBadge from '../component/StatusBadge';
-import { formatPrice, formatDateTime } from '../utils/formatters';
+import { formatPrice, formatDateTime, decimalToNumber } from '../utils/formatters';
 
 const OrderDetail = ({ route, navigation }) => {
   const { orderId } = route.params;
@@ -158,17 +158,90 @@ const OrderDetail = ({ route, navigation }) => {
         {/* Product Info */}
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
-            Product Information
+            Order Items
           </Text>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 6 }}>
-            {order.listing?.title || 'N/A'}
-          </Text>
-          <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 10 }}>
-            {order.listing?.vehicle?.description || ''}
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
-            đ{formatPrice(order.deposit_amount)}
-          </Text>
+          
+          {/* Order Items List */}
+          {order.orderDetails && order.orderDetails.length > 0 ? (
+            <>
+              {order.orderDetails.map((item, index) => (
+                <View
+                  key={item.order_detail_id}
+                  style={{
+                    paddingVertical: 12,
+                    borderTopWidth: index > 0 ? 1 : 0,
+                    borderTopColor: '#f3f4f6',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 4 }}>
+                        {item.vehicle?.brand} {item.vehicle?.model}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 2 }}>
+                        {item.vehicle?.year} • {item.vehicle?.bike_type}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: '#6b7280' }}>
+                        {item.vehicle?.condition} • {item.vehicle?.material}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#389cfa', marginBottom: 4 }}>
+                        đ{formatPrice(decimalToNumber(item.unit_price))}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: '#6b7280' }}>
+                        Qty: {item.quantity}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                    <Text style={{ fontSize: 14, color: '#6b7280' }}>Subtotal</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                      đ{formatPrice(decimalToNumber(item.total_price))}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              
+              {/* Order Summary */}
+              <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 2, borderTopColor: '#e5e7eb' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 14, color: '#6b7280' }}>
+                    Total Items ({order.orderDetails.reduce((sum, item) => sum + item.quantity, 0)})
+                  </Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                    đ{formatPrice(
+                      order.orderDetails.reduce(
+                        (sum, item) => sum + decimalToNumber(item.total_price),
+                        0
+                      )
+                    )}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>Deposit Amount</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
+                    đ{formatPrice(decimalToNumber(order.deposit_amount))}
+                  </Text>
+                </View>
+              </View>
+            </>
+          ) : order.listing ? (
+            // Fallback to old single listing format
+            <>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 6 }}>
+                {order.listing?.title || order.listing?.vehicle?.brand + ' ' + order.listing?.vehicle?.model || 'N/A'}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 10 }}>
+                {order.listing?.vehicle?.description || ''}
+              </Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
+                đ{formatPrice(decimalToNumber(order.deposit_amount))}
+              </Text>
+            </>
+          ) : (
+            <Text style={{ fontSize: 14, color: '#9ca3af' }}>No items found</Text>
+          )}
         </View>
 
         {/* Shipping Address */}
