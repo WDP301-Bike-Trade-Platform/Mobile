@@ -32,7 +32,7 @@ const PaymentSuccess = () => {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Đang xử lý thanh toán...</Text>
+        <Text style={styles.loadingText}>Processing payment...</Text>
       </View>
     );
   }
@@ -43,20 +43,20 @@ const PaymentSuccess = () => {
         <MaterialCommunityIcons name="check-circle" size={100} color="#4CAF50" />
       </View>
       
-      <Text style={styles.title}>Thanh toán thành công!</Text>
+      <Text style={styles.title}>Payment Successful!</Text>
       <Text style={styles.subtitle}>
-        Đơn hàng của bạn đã được xác nhận và đang được xử lý.
+        Your order has been confirmed and is being processed.
       </Text>
 
       {orderInfo && (
         <View style={styles.infoContainer}>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Mã đơn hàng:</Text>
+            <Text style={styles.infoLabel}>Order ID:</Text>
             <Text style={styles.infoValue}>{orderInfo.orderId?.substring(0, 8)}</Text>
           </View>
           {orderInfo.orderCode && (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Mã giao dịch:</Text>
+              <Text style={styles.infoLabel}>Transaction Code:</Text>
               <Text style={styles.infoValue}>{orderInfo.orderCode}</Text>
             </View>
           )}
@@ -65,16 +65,16 @@ const PaymentSuccess = () => {
 
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => navigation.navigate('MyOrders')}
+        onPress={() => navigation.navigate('OrderDetail', { orderId: orderInfo.orderId })}
       >
-        <Text style={styles.primaryButtonText}>Xem đơn hàng</Text>
+        <Text style={styles.primaryButtonText}>View Order</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.secondaryButton}
         onPress={() => navigation.navigate('MainApp')}
       >
-        <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
+        <Text style={styles.secondaryButtonText}>Back to Home</Text>
       </TouchableOpacity>
     </View>
   );

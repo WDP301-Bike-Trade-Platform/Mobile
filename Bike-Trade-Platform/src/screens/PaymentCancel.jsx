@@ -15,15 +15,15 @@ const PaymentCancel = () => {
         <MaterialCommunityIcons name="close-circle" size={100} color="#EF4444" />
       </View>
       
-      <Text style={styles.title}>Thanh toán đã bị hủy</Text>
+      <Text style={styles.title}>Payment Cancelled</Text>
       <Text style={styles.subtitle}>
-        Bạn đã hủy giao dịch thanh toán. Đơn hàng của bạn chưa được xử lý.
+        You have cancelled the payment transaction. Your order has not been processed.
       </Text>
 
       {orderId && (
         <View style={styles.infoContainer}>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Mã đơn hàng:</Text>
+            <Text style={styles.infoLabel}>Order ID:</Text>
             <Text style={styles.infoValue}>{orderId.substring(0, 8)}</Text>
           </View>
         </View>
@@ -39,14 +39,14 @@ const PaymentCancel = () => {
           }
         }}
       >
-        <Text style={styles.primaryButtonText}>Thử lại</Text>
+        <Text style={styles.primaryButtonText}>Try Again</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.secondaryButton}
         onPress={() => navigation.navigate('MainApp')}
       >
-        <Text style={styles.secondaryButtonText}>Về trang chủ</Text>
+        <Text style={styles.secondaryButtonText}>Back to Home</Text>
       </TouchableOpacity>
     </View>
   );
