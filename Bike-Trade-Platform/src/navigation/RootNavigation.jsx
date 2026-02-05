@@ -34,7 +34,8 @@ const Tabs = createBottomTabNavigator();
 const linking = {
   prefixes: [
     'biketrade://',
-    'exp://192.168.2.4:8081/--/', // Thay IP của bạn
+    'exp://192.168.2.4:8081/--/',
+    'exp://10.87.46.68:8081/--/', // Thay IP của bạn
     Linking.createURL('/'),
   ],
   config: {
