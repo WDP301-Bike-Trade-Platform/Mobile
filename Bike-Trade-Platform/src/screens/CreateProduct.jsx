@@ -12,11 +12,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { uploadMultipleImagesToSupabase } from "../services/api.supabase";
 import { getCategories } from "../services/api.category";
 import { createProduct } from "../services/api.products";
+import { updateListing } from "../services/api.sellerListings";
+import { decimalToNumber } from "../utils/formatters";
 import Dropdown from "../component/DropDown";
 
 // Separate InputField component to prevent re-renders
@@ -54,9 +56,14 @@ const InputField = memo(({ label, field, placeholder, keyboardType = "default", 
 
 const CreateProduct = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [categories, setCategories] = useState([]);
+
+  // Get edit mode data from route params
+  const isEdit = route.params?.isEdit;
+  const productData = route.params?.productData;
 
 
   // Form fields
@@ -92,7 +99,55 @@ const CreateProduct = () => {
   useEffect(() => {
     requestMediaPermissions();
     fetchCategories();
-  }, []);
+    
+    // Load existing data if in edit mode
+    if (isEdit && productData) {
+      loadExistingData();
+    }
+  }, [isEdit, productData]);
+
+  const loadExistingData = () => {
+    if (!productData) return;
+    
+    setFormData({
+      category_id: productData.vehicle?.category_id || "",
+      brand: productData.vehicle?.brand || "",
+      model: productData.vehicle?.model || "",
+      year: productData.vehicle?.year?.toString() || new Date().getFullYear().toString(),
+      price: decimalToNumber(productData.vehicle?.price)?.toString() || productData.price?.toString() || "",
+      bike_type: productData.vehicle?.bike_type || "",
+      material: productData.vehicle?.material || "",
+      brake_type: productData.vehicle?.brake_type || "",
+      wheel_size: productData.vehicle?.wheel_size || "",
+      usage_level: productData.vehicle?.usage_level || "",
+      mileage_km: productData.vehicle?.mileage_km?.toString() || "",
+      groupset: productData.vehicle?.groupset || "",
+      frame_size: productData.vehicle?.frame_size || "",
+      is_original: productData.vehicle?.is_original !== false,
+      has_receipt: productData.vehicle?.has_receipt === true,
+      frame_serial: productData.vehicle?.frame_serial || "",
+      description: productData.vehicle?.description || "",
+      images: [],
+    });
+    
+    // Load existing images
+    if (productData.media && productData.media.length > 0) {
+      const existingImages = productData.media.map(img => ({
+        uri: img.file_url,
+        type: "image/jpeg",
+        isExisting: true
+      }));
+      setSelectedImages(existingImages);
+    } else if (productData.images && productData.images.length > 0) {
+      // Fallback for old data structure
+      const existingImages = productData.images.map(img => ({
+        uri: img.url || img,
+        type: "image/jpeg",
+        isExisting: true
+      }));
+      setSelectedImages(existingImages);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -178,8 +233,8 @@ const CreateProduct = () => {
       return;
     }
 
-    // Validate images
-    if (selectedImages.length < 3) {
+    // Validate images (only for new listings)
+    if (!isEdit && selectedImages.length < 3) {
       Alert.alert("Error", "Please select at least 3 images");
       return;
     }
@@ -188,16 +243,23 @@ const CreateProduct = () => {
     try {
       let imageUrls = [];
 
-      // If there are images, upload them to Supabase
-      if (selectedImages.length > 0) {
-        console.log("Uploading images to Supabase...");
-        const imageUris = selectedImages.map((img) => img.uri);
-        imageUrls = await uploadMultipleImagesToSupabase(imageUris);
-        console.log("Uploaded image URLs:", imageUrls);
+      // Handle images - separate existing from new ones
+      const existingImages = selectedImages.filter(img => img.isExisting);
+      const newImages = selectedImages.filter(img => !img.isExisting);
+      
+      // Keep existing image URLs
+      imageUrls = existingImages.map(img => img.uri);
+      
+      // Upload new images to Supabase if any
+      if (newImages.length > 0) {
+        console.log("Uploading new images to Supabase...");
+        const newImageUris = newImages.map((img) => img.uri);
+        const uploadedUrls = await uploadMultipleImagesToSupabase(newImageUris);
+        imageUrls = [...imageUrls, ...uploadedUrls];
+        console.log("Uploaded image URLs:", uploadedUrls);
       }
 
-      // TODO: Create product with API
-      const productData = {
+      const submissionData = {
         category_id: formData.category_id,
         brand: formData.brand,
         model: formData.model,
@@ -217,13 +279,19 @@ const CreateProduct = () => {
         description: formData.description,
         images: imageUrls,
       };
-      console.log("Creating product with data:", JSON.stringify(productData, null, 2));
-      const response = await createProduct(productData);
-      console.log("Product created successfully:", response);
       
+      console.log(`${isEdit ? 'Updating' : 'Creating'} product with data:`, JSON.stringify(submissionData, null, 2));
       
+      let response;
+      if (isEdit && productData) {
+        response = await updateListing(productData.id, submissionData);
+        console.log("Product updated successfully:", response);
+      } else {
+        response = await createProduct(submissionData);
+        console.log("Product created successfully:", response);
+      }
       
-      Alert.alert("Success", "Product created successfully!");
+      Alert.alert("Success", `Product ${isEdit ? 'updated' : 'created'} successfully!`);
       navigation.goBack();
     } catch (error) {
       console.error("Error in handleSubmit:", error);
@@ -231,7 +299,7 @@ const CreateProduct = () => {
       console.error("Error status:", error.response?.status);
       
       // Show detailed error message
-      let errorMessage = "Failed to create product";
+      let errorMessage = `Failed to ${isEdit ? 'update' : 'create'} product`;
       if (error.response?.data?.message) {
         if (Array.isArray(error.response.data.message)) {
           errorMessage = error.response.data.message.join("\n");
@@ -266,7 +334,9 @@ const CreateProduct = () => {
         <Pressable onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#222" />
         </Pressable>
-        <Text style={{ fontSize: 18, fontWeight: "bold", color: "#222" }}>Create Listing</Text>
+        <Text style={{ fontSize: 18, fontWeight: "bold", color: "#222" }}>
+          {isEdit ? 'Edit Listing' : 'Create Listing'}
+        </Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -291,11 +361,12 @@ const CreateProduct = () => {
           </Text>
           <Dropdown
             data={(categories || []).map((category) => ({
-              value: category.category_id.toString(),
+              value: category.category_id || category.id,
               label: category.name,
             }))}
             onChange={(item) => handleInputChange("category_id", item.value)}
             placeholder="Please select a category"
+            selectedValue={formData.category_id}
           />
         </View>
 
@@ -524,7 +595,7 @@ const CreateProduct = () => {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={{ fontSize: 16, fontWeight: "bold", color: "#fff" }}>
-                Create Listing
+                {isEdit ? 'Update Listing' : 'Create Listing'}
               </Text>
             )}
           </Pressable>

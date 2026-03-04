@@ -1,15 +1,19 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Provider } from 'react-redux';
 import RootNavigation from './src/navigation/RootNavigation';
 import AppProvider from './src/provider/AppProvider';
 import StorageProvider from './src/provider/StorageProvider';
+import { store } from './src/store';
 
 export default function App() {
   return (
-    <AppProvider>
-      <StorageProvider>
-        <RootNavigation />
-      </StorageProvider>
-    </AppProvider>
+    <Provider store={store}>
+      <AppProvider>
+        <StorageProvider>
+          <RootNavigation />
+        </StorageProvider>
+      </AppProvider>
+    </Provider>
   );
 }
 

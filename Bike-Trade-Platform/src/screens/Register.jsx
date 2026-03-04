@@ -95,13 +95,9 @@ const Register = () => {
       // Simulate registration API call
       setTimeout(() => {
         setIsLoading(false);
-        // Navigate to OTP verification screen
-        navigation.navigate("OTPVerification", {
-          email: email,
-          fullName: fullName,
-          phone: phone,
-          password: password,
-        });
+        // Show success message and navigate to Login
+        alert("Registration successful! You can now login with your account.");
+        navigation.navigate("Login");
       }, 1500);
     } catch (error) {
       setIsLoading(false);

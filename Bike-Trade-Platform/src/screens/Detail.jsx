@@ -6,21 +6,26 @@ import {
   View,
   Pressable,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useStorageContext } from "../provider/StorageProvider";
 import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useCart } from "../hooks/useCart";
 
 const Detail = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params;
   // Handle both old format (book) and new format (product)
-  const product = params?.product
+  const product = params?.product;
+  const { addProductToCart, items } = useCart();
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const {
     addStorageData: addToFavorites,
@@ -49,6 +54,38 @@ const Detail = () => {
     : (Array.isArray(vehicleData.image) 
         ? vehicleData.image 
         : [vehicleData.image || "https://random-image-pepebigotes.vercel.app/api/random-image"]);
+
+  // Check if product is already in cart
+  const isInCart = items.some(item => 
+    item.productId === listingId || 
+    item.product?.id === listingId
+  );
+
+  const handleAddToCart = async () => {
+    if (!product || isAddingToCart) return;
+
+    setIsAddingToCart(true);
+    try {
+      await addProductToCart({
+        productId: listingId,
+        product: {
+          id: listingId,
+          title: `${vehicleData.brand} ${vehicleData.model}`,
+          name: `${vehicleData.brand} ${vehicleData.model}`,
+          brand: vehicleData.brand,
+          model: vehicleData.model,
+          price: price,
+          images: images,
+          ...vehicleData
+        },
+        quantity: 1,
+      });
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
   const isFavorite = favorites?.some((fav) => fav.listing_id === listingId || fav.id === product.id);
 
@@ -738,7 +775,7 @@ const Detail = () => {
           paddingVertical: 12,
           paddingBottom: 20,
           flexDirection: "row",
-          gap: 12,
+          gap: 8,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.05,
@@ -774,6 +811,57 @@ const Detail = () => {
             Chat
           </Text>
         </Pressable>
+        
+        {/* Add to Cart Button */}
+        <Pressable
+          onPress={handleAddToCart}
+          disabled={isAddingToCart || isInCart}
+          style={{
+            flex: 1.2,
+            height: 56,
+            borderRadius: 12,
+            backgroundColor: isInCart ? "#d1fae5" : (isAddingToCart ? "#f3f4f6" : "#f0f9ff"),
+            borderWidth: 2,
+            borderColor: isInCart ? "#16a34a" : "#359EFF",
+            justifyContent: "center",
+            alignItems: "center",
+            flexDirection: "row",
+            gap: 8,
+          }}
+        >
+          {isAddingToCart ? (
+            <>
+              <ActivityIndicator size="small" color="#359EFF" />
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  color: "#359EFF",
+                }}
+              >
+                Adding...
+              </Text>
+            </>
+          ) : (
+            <>
+              <MaterialCommunityIcons
+                name={isInCart ? "check" : "cart-plus"}
+                size={20}
+                color={isInCart ? "#16a34a" : "#359EFF"}
+              />
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  color: isInCart ? "#16a34a" : "#359EFF",
+                }}
+              >
+                {isInCart ? "In Cart" : "Add to Cart"}
+              </Text>
+            </>
+          )}
+        </Pressable>
+        
         <Pressable
           onPress={() => navigation.navigate('Checkout', { 
             listing: {
@@ -784,7 +872,7 @@ const Detail = () => {
             }
           })}
           style={{
-            flex: 2,
+            flex: 1.5,
             height: 56,
             borderRadius: 12,
             backgroundColor: "#359EFF",
@@ -803,7 +891,7 @@ const Detail = () => {
             style={{
               fontSize: 14,
               fontWeight: "bold",
-              color: "#111",
+              color: "#fff",
             }}
           >
             Buy Now
@@ -811,7 +899,7 @@ const Detail = () => {
           <MaterialCommunityIcons
             name="arrow-right"
             size={20}
-            color="#111"
+            color="#fff"
           />
         </Pressable>
       </View>

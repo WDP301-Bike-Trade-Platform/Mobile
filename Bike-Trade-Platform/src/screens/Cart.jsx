@@ -1,253 +1,386 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
+  Image,
   Pressable,
   ActivityIndicator,
   Alert,
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  getMyCart,
-  updateCartItem,
-  removeFromCart,
-  clearCart,
-} from '../services/api.cart';
-import HeaderBar from '../component/HeaderBar';
-import CartItemCard from '../component/CartItemCard';
-import EmptyState from '../component/EmptyState';
 import { formatPrice } from '../utils/formatters';
+import { useCart } from '../hooks/useCart';
 
 const Cart = ({ navigation }) => {
-  const [cart, setCart] = useState(null);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [itemCount, setItemCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const {
+    items,
+    totalAmount,
+    itemCount,
+    loading,
+    removeItem,
+    clearCartItems,
+    loadCart,
+  } = useCart();
+
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
-      fetchCart();
-    }, [])
+    useCallback(() => {
+      loadCart();
+    }, [loadCart])
   );
 
-  const fetchCart = async () => {
-    try {
-      setLoading(true);
-      const response = await getMyCart();
-      const cartData = response?.data || response;
-      
-      setCart(cartData.cart);
-      setTotalAmount(cartData.totalAmount || 0);
-      setItemCount(cartData.itemCount || 0);
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-      Alert.alert('Error', 'Failed to load cart');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const handleUpdateQuantity = async (cartItemId, newQuantity) => {
-    try {
-      await updateCartItem(cartItemId, newQuantity);
-      fetchCart();
-    } catch (error) {
-      console.error('Error updating quantity:', error);
-      Alert.alert('Error', 'Failed to update quantity');
-    }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadCart();
+    setRefreshing(false);
   };
 
   const handleRemoveItem = (cartItemId) => {
-    Alert.alert(
-      'Remove Item',
-      'Are you sure you want to remove this item from cart?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeFromCart(cartItemId);
-              Alert.alert('Success', 'Item removed from cart');
-              fetchCart();
-            } catch (error) {
-              console.error('Error removing item:', error);
-              Alert.alert('Error', 'Failed to remove item');
-            }
-          },
-        },
-      ]
-    );
+    Alert.alert('Xóa sản phẩm', 'Bạn có chắc muốn xóa sản phẩm này?', [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: () => removeItem(cartItemId),
+      },
+    ]);
   };
 
   const handleClearCart = () => {
-    Alert.alert(
-      'Clear Cart',
-      'Are you sure you want to remove all items from cart?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearCart();
-              Alert.alert('Success', 'Cart cleared successfully');
-              fetchCart();
-            } catch (error) {
-              console.error('Error clearing cart:', error);
-              Alert.alert('Error', 'Failed to clear cart');
-            }
-          },
-        },
-      ]
-    );
+    Alert.alert('Xóa giỏ hàng', 'Bạn có chắc muốn xóa toàn bộ giỏ hàng?', [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa tất cả',
+        style: 'destructive',
+        onPress: () => clearCartItems(),
+      },
+    ]);
   };
 
   const handleCheckout = () => {
-    if (!cart || cart.items.length === 0) {
-      Alert.alert('Error', 'Your cart is empty');
+    if (!items || items.length === 0) {
+      Alert.alert('Thông báo', 'Giỏ hàng trống');
       return;
     }
-
-    navigation.navigate('Checkout', {
-      cartItems: cart.items,
-      totalAmount,
-    });
+    navigation.navigate('Checkout', { cartItems: items, totalAmount });
   };
 
-  if (loading) {
+  const getItemImage = (item) => {
+    const media = item.listing?.media?.[0] || item.product?.images?.[0];
+    return media?.file_url || media?.url || media || null;
+  };
+
+  const getItemTitle = (item) => {
+    const vehicle = item.listing?.vehicle || item.product;
+    if (vehicle?.brand && vehicle?.model) return `${vehicle.brand} ${vehicle.model}`;
+    return vehicle?.title || vehicle?.name || 'Sản phẩm';
+  };
+
+  const getSellerName = (item) => {
+    const seller = item.listing?.seller || item.seller;
+    return seller?.full_name || seller?.name || null;
+  };
+
+  const renderItem = ({ item }) => {
+    const imageUrl = getItemImage(item);
+    const title = getItemTitle(item);
+    const sellerName = getSellerName(item);
+    const price = item.price || item.listing?.vehicle?.price || 0;
+
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-        {/* <HeaderBar title="My Cart" onBack={() => navigation.goBack()} />
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
+      <View style={styles.cartItem}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('Detail', {
+              listingId: item.listing_id || item.listing?.listing_id,
+            })
+          }
         >
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.itemImage} />
+          ) : (
+            <View style={[styles.itemImage, styles.imagePlaceholder]}>
+              <MaterialCommunityIcons name="bike" size={36} color="#d1d5db" />
+            </View>
+          )}
+        </Pressable>
+
+        <View style={styles.itemDetails}>
+          <Text style={styles.itemTitle} numberOfLines={2}>
+            {title}
+          </Text>
+
+          {sellerName && (
+            <Text style={styles.sellerName}>Bán bởi: {sellerName}</Text>
+          )}
+
+          <Text style={styles.itemPrice}>{formatPrice(price)}</Text>
+        </View>
+
+        <Pressable
+          style={styles.removeButton}
+          onPress={() => handleRemoveItem(item.id || item.cart_item_id)}
+        >
+          <MaterialCommunityIcons
+            name="trash-can-outline"
+            size={20}
+            color="#ef4444"
+          />
+        </Pressable>
+      </View>
+    );
+  };
+
+  if (loading && (!items || items.length === 0)) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#359EFF" />
-        </View> */}
-        <ActivityIndicator size="large" color="#359EFF" />
-        <Text style={{ marginTop: 12, color: "#999" }}>
-          Loading cart...
-        </Text>
+          <Text style={styles.loadingText}>Đang tải giỏ hàng...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-      {/* <HeaderBar
-        title="My Cart"
-        onBack={() => navigation.goBack()}
-        rightAction={
-          cart?.items?.length > 0 && (
-            <Pressable onPress={handleClearCart}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>
-                Clear All
-              </Text>
-            </Pressable>
-          )
-        }
-      /> */}
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      {/* Cart Summary */}
-      {cart?.items?.length > 0 && (
-        <View
-          style={{
-            backgroundColor: '#fff',
-            padding: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: '#e5e7eb',
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#6b7280' }}>
-              {itemCount} {itemCount === 1 ? 'item' : 'items'} in cart
-            </Text>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#359EFF' }}>
-              đ{formatPrice(totalAmount)}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: cart?.items?.length > 0 ? 100 : 16,
-        }}
-        refreshing={refreshing}
-        onRefresh={() => {
-          setRefreshing(true);
-          fetchCart();
-        }}
-      >
-        {!cart || cart.items.length === 0 ? (
-          <EmptyState
-            icon="cart-outline"
-            title="Your Cart is Empty"
-            message="Add items to your cart to get started"
-            buttonText="Browse Products"
-            onButtonPress={() => navigation.navigate('Home')}
-          />
-        ) : (
-          cart.items.map((item) => (
-            <CartItemCard
-              key={item.cart_item_id}
-              item={item}
-              onRemove={handleRemoveItem}
-            />
-          ))
-        )}
-      </ScrollView>
-
-      {/* Checkout Button */}
-      {cart?.items?.length > 0 && (
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: '#fff',
-            padding: 10,
-            borderTopWidth: 1,
-            borderTopColor: '#e5e7eb',
-          }}
-        >
-          <Pressable
-            onPress={handleCheckout}
-            style={({ pressed }) => ({
-              paddingVertical: 16,
-              borderRadius: 12,
-              backgroundColor: '#359EFF',
-              alignItems: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
-              Proceed to Checkout
-            </Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#111" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Giỏ hàng ({itemCount})</Text>
+        {items?.length > 0 ? (
+          <Pressable style={styles.clearButton} onPress={handleClearCart}>
+            <MaterialCommunityIcons name="delete-sweep" size={24} color="#ef4444" />
           </Pressable>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
+      </View>
+
+      {!items || items.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIcon}>
+            <MaterialCommunityIcons name="cart-outline" size={64} color="#d1d5db" />
+          </View>
+          <Text style={styles.emptyTitle}>Giỏ hàng trống</Text>
+          <Text style={styles.emptySubtitle}>
+            Hãy khám phá và thêm sản phẩm yêu thích vào giỏ hàng
+          </Text>
         </View>
+      ) : (
+        <>
+          <FlatList
+            data={items}
+            keyExtractor={(item) =>
+              (item.id || item.cart_item_id)?.toString() || Math.random().toString()
+            }
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={['#359EFF']}
+              />
+            }
+          />
+
+          {/* Bottom Summary */}
+          <View style={styles.bottomContainer}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>
+                Tổng cộng ({itemCount} sản phẩm)
+              </Text>
+              <Text style={styles.summaryPrice}>{formatPrice(totalAmount)}</Text>
+            </View>
+            <Pressable style={styles.checkoutButton} onPress={handleCheckout}>
+              <Text style={styles.checkoutButtonText}>Thanh toán</Text>
+              <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
+            </Pressable>
+          </View>
+        </>
       )}
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f7f8',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111',
+    textAlign: 'center',
+  },
+  clearButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 180,
+  },
+  cartItem: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  itemImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  imagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemDetails: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'space-between',
+  },
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111',
+    marginBottom: 4,
+  },
+  sellerName: {
+    fontSize: 11,
+    color: '#9ca3af',
+  },
+  itemPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#359EFF',
+  },
+  removeButton: {
+    padding: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  summaryPrice: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#359EFF',
+  },
+  checkoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#359EFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  checkoutButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+});
 
 export default Cart;

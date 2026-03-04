@@ -12,13 +12,15 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useStorageContext } from "../provider/StorageProvider";
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TextInput } from "react-native-gesture-handler";
 import { getProducts, getCategories } from "../services/api.products";
 import { addToCart as addToCartApi } from "../services/api.cart";
+import { fetchNotifications } from "../services/api.notifications";
 
 const Home = () => {
   const navigation = useNavigation();
+  const { isAuthenticated } = useAppContext();
   const {
     addStorageData: addToFavorites,
     removeStorageData: removeFromFavorites,
@@ -30,15 +32,25 @@ const Home = () => {
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch categories and products whenever tab is focused
   useFocusEffect(
     useCallback(() => {
       fetchCategories();
       fetchProducts();
-    }, [])
+      if (isAuthenticated) fetchUnreadCount();
+    }, [isAuthenticated])
   );
-  
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await fetchNotifications(0, 50);
+      const items = res.data?.items || [];
+      setUnreadCount(items.filter((n) => !n.isRead).length);
+    } catch (e) {
+      console.log("Error fetching unread count:", e);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -337,7 +349,59 @@ const Home = () => {
               </Text>
             </View>
           </View>
-          
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            {isAuthenticated && (
+              <Pressable
+                onPress={() => navigation.navigate("CreateProduct")}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: "#359EFF",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <MaterialCommunityIcons name="plus" size={22} color="#fff" />
+              </Pressable>
+            )}
+            {isAuthenticated && (
+              <Pressable
+                onPress={() => navigation.navigate("Notifications")}
+                style={{ position: "relative", padding: 4 }}
+              >
+                <MaterialCommunityIcons name="bell-outline" size={26} color="#333" />
+                {unreadCount > 0 && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      right: 0,
+                      backgroundColor: "#ef4444",
+                      borderRadius: 10,
+                      minWidth: 18,
+                      height: 18,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingHorizontal: 4,
+                      borderWidth: 2,
+                      borderColor: "#fff",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: "700",
+                        color: "#fff",
+                      }}
+                    >
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {/* Search Bar */}

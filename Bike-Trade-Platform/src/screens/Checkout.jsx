@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createOrder, checkoutCart } from '../services/api.order';
-import { createPaymentForListing, createPaymentForOrder } from '../services/api.payment';
+import { createPaymentForOrder } from '../services/api.payment';
 import { getMyAddresses, getDefaultAddress } from '../services/api.address';
 import HeaderBar from '../component/HeaderBar';
 import { formatPrice } from '../utils/formatters';
@@ -26,6 +26,7 @@ const Checkout = ({ route, navigation }) => {
   const [addresses, setAddresses] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState('PAYOS');
 
   useEffect(() => {
     fetchAddresses();
@@ -70,68 +71,81 @@ const Checkout = ({ route, navigation }) => {
       if (cartItems && cartItems.length > 0) {
         // Checkout from cart
         const checkoutData = {
+          paymentMethod,
           shippingAddressId: selectedAddress.address_id,
-          note: note || 'Checkout from cart',
+          deliveryPhone: selectedAddress.phone || undefined,
         };
 
         const result = await checkoutCart(checkoutData);
         const orders = result?.data || result;
 
         if (Array.isArray(orders) && orders.length > 0) {
-          if (orders.length === 1) {
-            // Single order - proceed to payment
+          if (paymentMethod === 'PAYOS' && orders.length === 1) {
+            // Single order with PAYOS - proceed to payment
             const orderId = orders[0].order_id;
             const response = await createPaymentForOrder(orderId);
             const paymentData = response?.data || response;
 
             if (paymentData.paymentLink) {
-              const supported = await Linking.canOpenURL(paymentData.paymentLink);
-              if (supported) {
-                await Linking.openURL(paymentData.paymentLink);
-                Alert.alert(
-                  'Order Placed',
-                  'Please complete the payment in your browser',
-                  [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
-                );
-              } else {
-                Alert.alert('Error', 'Cannot open payment link');
-              }
+              await Linking.openURL(paymentData.paymentLink);
+              Alert.alert(
+                'Đặt hàng thành công',
+                'Vui lòng hoàn tất thanh toán trên trình duyệt',
+                [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
+              );
+            } else {
+              Alert.alert('Thành công', 'Đã tạo đơn hàng', [
+                { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
+              ]);
             }
           } else {
-            // Multiple orders - show success message
             Alert.alert(
-              'Success',
-              `${orders.length} orders created successfully`,
+              'Thành công',
+              `Đã tạo ${orders.length} đơn hàng`,
               [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
             );
           }
         }
       } else if (listing) {
-        // Checkout single listing
-        const response = await createPaymentForListing(listing.listing_id);
-        const paymentData = response?.data || response;
+        // Checkout single listing - create order first
+        const orderData = {
+          listingId: listing.listing_id,
+          paymentMethod,
+          shippingAddressId: selectedAddress.address_id,
+          deliveryPhone: selectedAddress.phone || undefined,
+          note: note || undefined,
+        };
 
-        if (paymentData.paymentLink) {
-          const supported = await Linking.canOpenURL(paymentData.paymentLink);
-          if (supported) {
+        const orderResult = await createOrder(orderData);
+        const order = orderResult?.data || orderResult;
+
+        if (paymentMethod === 'PAYOS' && order?.order_id) {
+          const response = await createPaymentForOrder(order.order_id);
+          const paymentData = response?.data || response;
+
+          if (paymentData.paymentLink) {
             await Linking.openURL(paymentData.paymentLink);
             Alert.alert(
-              'Order Placed',
-              'Please complete the payment in your browser',
+              'Đặt hàng thành công',
+              'Vui lòng hoàn tất thanh toán trên trình duyệt',
               [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
             );
           } else {
-            Alert.alert('Error', 'Cannot open payment link');
+            Alert.alert('Thành công', 'Đã tạo đơn hàng', [
+              { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
+            ]);
           }
         } else {
-          Alert.alert('Success', 'Order placed successfully', [
+          Alert.alert('Thành công', 'Đã tạo đơn hàng COD', [
             { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
           ]);
         }
       }
     } catch (error) {
       console.error('Error during checkout:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to complete checkout');
+      const errMsg = error.response?.data?.message;
+      const message = Array.isArray(errMsg) ? errMsg.join('\n') : (errMsg || 'Không thể hoàn tất đặt hàng');
+      Alert.alert('Lỗi', message);
     } finally {
       setLoading(false);
     }
@@ -231,6 +245,57 @@ const Checkout = ({ route, navigation }) => {
               </Text>
             </Pressable>
           )}
+        </View>
+
+        {/* Payment Method */}
+        <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
+            Phương thức thanh toán
+          </Text>
+          {[
+            { key: 'PAYOS', label: 'PayOS', desc: 'Thanh toán online qua chuyển khoản', icon: 'credit-card-outline' },
+            { key: 'COD', label: 'COD', desc: 'Thanh toán khi nhận hàng', icon: 'cash' },
+          ].map((method) => (
+            <Pressable
+              key={method.key}
+              onPress={() => setPaymentMethod(method.key)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 14,
+                marginBottom: 8,
+                borderRadius: 10,
+                borderWidth: 1.5,
+                borderColor: paymentMethod === method.key ? '#389cfa' : '#e5e7eb',
+                backgroundColor: paymentMethod === method.key ? '#f0f9ff' : '#fff',
+                gap: 12,
+              }}
+            >
+              <MaterialCommunityIcons
+                name={method.icon}
+                size={24}
+                color={paymentMethod === method.key ? '#389cfa' : '#9ca3af'}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                  {method.label}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  {method.desc}
+                </Text>
+              </View>
+              <View style={{
+                width: 22, height: 22, borderRadius: 11,
+                borderWidth: 2,
+                borderColor: paymentMethod === method.key ? '#389cfa' : '#d1d5db',
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                {paymentMethod === method.key && (
+                  <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#389cfa' }} />
+                )}
+              </View>
+            </Pressable>
+          ))}
         </View>
 
         {/* Note */}

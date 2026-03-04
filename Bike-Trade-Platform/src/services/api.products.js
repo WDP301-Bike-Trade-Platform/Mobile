@@ -53,17 +53,50 @@ export const updateProduct = async (listingId, productData) => {
     const response = await instance.patch(`/listingProduct/${listingId}`, productData);
     return response.data;
   } catch (error) {
-    console.log('Update product error', error.message);
+    throw error;
   }
 };
 
-// Get categories (bike brands)
-export const getCategories = async (page = 1) => {
+export const deleteProduct = async (listingId) => {
   try {
-    const response = await instance.get(`/categories?page=${page}`);
+    const response = await instance.delete(`/listingProduct/${listingId}`);
     return response.data;
   } catch (error) {
-    console.log("Error fetching categories:", error.message);
+    throw error;
+  }
+};
+
+export const getCategories = async (page = 1) => {
+  try {
+    const response = await instance.get(`/categories?page=${page}&limit=50`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const searchProducts = async (query, filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (query) params.append('search', query);
+    if (filters.category) params.append('category', filters.category);
+    if (filters.minPrice) params.append('minPrice', filters.minPrice);
+    if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+    if (filters.brand) params.append('brand', filters.brand);
+    if (filters.condition) params.append('condition', filters.condition);
+    
+    const response = await instance.get(`/listingProduct/search?${params.toString()}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getMyProducts = async () => {
+  try {
+    const response = await instance.get("/listingProduct/my-listings");
+    return response.data;
+  } catch (error) {
     throw error;
   }
 };

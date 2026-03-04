@@ -7,7 +7,6 @@ import Detail from "../screens/Detail";
 import Favorites from "../screens/Favorites";
 import Login from "../screens/Login";
 import Register from "../screens/Register";
-import OTPVerification from "../screens/OTPVerification";
 import Profile from "../screens/Profile";
 import EditProfile from "../screens/EditProfile";
 import ManageAddresses from "../screens/ManageAddresses";
@@ -22,6 +21,10 @@ import Cart from '../screens/Cart';
 import CreateProduct from "../screens/CreateProduct";
 import PaymentSuccess from "../screens/PaymentSuccess";
 import PaymentCancel from "../screens/PaymentCancel";
+import MyPost from "../screens/MyPost";
+import SellerListingDetail from "../screens/SellerListingDetail";
+import Notifications from "../screens/Notifications";
+import AddToCartExample from "../screens/AddToCartExample";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
@@ -35,7 +38,8 @@ const linking = {
   prefixes: [
     'biketrade://',
     'exp://192.168.2.4:8081/--/',
-    'exp://10.87.46.68:8081/--/', // Thay IP của bạn
+    'exp://10.87.46.68:8081/--/', 
+    'exp://192.168.100.150:8081/--/',// Thay IP của bạn
     Linking.createURL('/'),
   ],
   config: {
@@ -135,46 +139,6 @@ const BottomTabs = ({ isAuthenticated }) => {
             options={{ title: "Cart", headerShown: true }}
           />
         )}
-        {/* Create Product button (placeholder - no screen here) */}
-        {isAuthenticated && (
-          <Tabs.Screen
-            name="CreatePlaceholder"
-            options={{
-              title: "Create",
-              tabBarButton: ({ navigation: navProp }) => (
-                <Pressable
-                  onPress={() => navigation.navigate("CreateProduct")}
-                  style={{
-                    flex: 1,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 28,
-                      backgroundColor: "#359EFF",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: 8,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 8,
-                    }}
-                  >
-                    <MaterialCommunityIcons name="plus" size={28} color="#fff" />
-                  </View>
-                </Pressable>
-              ),
-            }}
-          >
-            {() => null}
-          </Tabs.Screen>
-        )}
         {isAuthenticated && (
           <Tabs.Screen
             name="Chat"
@@ -241,13 +205,6 @@ const RootNavigation = () => {
         <Stack.Screen
           name="Register"
           component={Register}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="OTPVerification"
-          component={OTPVerification}
           options={{
             headerShown: false,
           }}
@@ -330,7 +287,34 @@ const RootNavigation = () => {
           }}
         />
         <Stack.Screen
-
+          name="MyPost"
+          component={MyPost}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="SellerListingDetail"
+          component={SellerListingDetail}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={Notifications}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="AddToCartExample"
+          component={AddToCartExample}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="PaymentSuccess"
           component={PaymentSuccess}
           options={{

@@ -330,6 +330,40 @@ const Profile = () => {
           />
         </View>
 
+        {/* Seller Menu Group */}
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginVertical: 8,
+            backgroundColor: "#fff",
+            borderRadius: 16,
+            overflow: "hidden",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.08,
+            shadowRadius: 2,
+            elevation: 1,
+          }}
+        >
+          <MenuItem
+            icon="store"
+            label="My Posts"
+            onPress={() => navigation.navigate("MyPost")}
+          />
+          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
+          <MenuItem
+            icon="truck"
+            label="Seller Orders"
+            onPress={() => navigation.navigate("SellerOrders")}
+          />
+          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
+          <MenuItem
+            icon="bell"
+            label="Notifications"
+            onPress={() => navigation.navigate("Notifications")}
+          />
+        </View>
+
         {/* Menu Group 2 */}
         <View
           style={{
