@@ -7,7 +7,6 @@ import {
   Pressable,
   Dimensions,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useStorageContext } from "../provider/StorageProvider";
@@ -15,12 +14,96 @@ import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCart } from "../hooks/useCart";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const STATUS_CONFIG = {
+  APPROVED: { label: "Available", color: "#16a34a", bg: "#dcfce7", icon: "check-circle" },
+  SOLD: { label: "Sold", color: "#dc2626", bg: "#fee2e2", icon: "tag-check" },
+  PENDING_APPROVAL: { label: "Pending", color: "#d97706", bg: "#fef3c7", icon: "clock-outline" },
+  REJECTED: { label: "Rejected", color: "#dc2626", bg: "#fee2e2", icon: "close-circle" },
+  DRAFT: { label: "Draft", color: "#6b7280", bg: "#f3f4f6", icon: "pencil" },
+};
+
+const CONDITION_CONFIG = {
+  NEW: { label: "New", color: "#16a34a" },
+  LIKE_NEW: { label: "Like New", color: "#059669" },
+  USED: { label: "Used", color: "#d97706" },
+  HEAVILY_USED: { label: "Heavily Used", color: "#dc2626" },
+};
+
+function parsePrice(price) {
+  if (!price) return 0;
+  if (typeof price === "number") return price;
+  if (price.s !== undefined && price.e !== undefined && price.d) {
+    const sign = price.s === 1 ? 1 : -1;
+    const digits = price.d.join("");
+    const exponent = price.e;
+    const numStr = digits.substring(0, exponent + 1) + (digits.length > exponent + 1 ? "." + digits.substring(exponent + 1) : "");
+    return sign * parseFloat(numStr);
+  }
+  return parseFloat(price) || 0;
+}
+
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return "";
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now - date;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+  return date.toLocaleDateString("vi-VN");
+}
+
+const SpecCard = ({ icon, label, value }) => (
+  <View
+    style={{
+      width: (SCREEN_WIDTH - 44) / 2,
+      backgroundColor: "#fff",
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: "#f0f0f0",
+    }}
+  >
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+      <MaterialCommunityIcons name={icon} size={14} color="#999" />
+      <Text style={{ fontSize: 10, fontWeight: "600", color: "#999", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        {label}
+      </Text>
+    </View>
+    <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }} numberOfLines={1}>
+      {value || "N/A"}
+    </Text>
+  </View>
+);
+
+const BadgeTag = ({ icon, label, active }) => (
+  <View
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: active ? "#dcfce7" : "#fee2e2",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+    }}
+  >
+    <MaterialCommunityIcons name={icon} size={14} color={active ? "#16a34a" : "#dc2626"} />
+    <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#16a34a" : "#dc2626" }}>{label}</Text>
+  </View>
+);
+
 const Detail = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const params = route.params;
-  // Handle both old format (book) and new format (product)
-  const product = params?.product;
+  const product = route.params?.product;
   const { addProductToCart, items } = useCart();
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -35,35 +118,35 @@ const Detail = () => {
 
   if (!product) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "#666" }}>No bike data available</Text>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f5f7f8" }}>
+        <MaterialCommunityIcons name="bike-fast" size={64} color="#ddd" />
+        <Text style={{ color: "#999", marginTop: 12, fontSize: 16 }}>No bike data available</Text>
+        <Pressable onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+          <Text style={{ color: "#359EFF", fontWeight: "600" }}>Go Back</Text>
+        </Pressable>
       </View>
     );
   }
 
-  // Extract data from new format
   const listingId = product.listing_id || product.id;
   const vehicleData = product.vehicle || product;
   const mediaData = product.media || [];
   const sellerData = product.seller || {};
-  const price = vehicleData.price?.d ? vehicleData.price.d[0] : vehicleData.price;
+  const price = parsePrice(vehicleData.price);
+  const status = product.status || "APPROVED";
+  const statusInfo = STATUS_CONFIG[status] || STATUS_CONFIG.APPROVED;
+  const conditionInfo = CONDITION_CONFIG[vehicleData.condition] || { label: vehicleData.condition, color: "#6b7280" };
+  const isSold = status === "SOLD";
 
-  // Build images array from media
-  const images = mediaData.length > 0
-    ? mediaData.map(m => m.file_url)
-    : (Array.isArray(vehicleData.image) 
-        ? vehicleData.image 
-        : [vehicleData.image || "https://random-image-pepebigotes.vercel.app/api/random-image"]);
+  const images =
+    mediaData.length > 0
+      ? mediaData.map((m) => m.file_url)
+      : [vehicleData.image || "https://placehold.co/600x400?text=No+Image"];
 
-  // Check if product is already in cart
-  const isInCart = items.some(item => 
-    item.productId === listingId || 
-    item.product?.id === listingId
-  );
+  const isInCart = items.some((item) => item.productId === listingId || item.product?.id === listingId);
 
   const handleAddToCart = async () => {
     if (!product || isAddingToCart) return;
-
     setIsAddingToCart(true);
     try {
       await addProductToCart({
@@ -74,14 +157,14 @@ const Detail = () => {
           name: `${vehicleData.brand} ${vehicleData.model}`,
           brand: vehicleData.brand,
           model: vehicleData.model,
-          price: price,
-          images: images,
-          ...vehicleData
+          price,
+          images,
+          ...vehicleData,
         },
         quantity: 1,
       });
     } catch (error) {
-      console.error('Failed to add to cart:', error);
+      console.error("Failed to add to cart:", error);
     } finally {
       setIsAddingToCart(false);
     }
@@ -90,17 +173,15 @@ const Detail = () => {
   const isFavorite = favorites?.some((fav) => fav.listing_id === listingId || fav.id === product.id);
 
   const toggleFavorite = () => {
-    if (isFavorite) {
-      removeFromFavorites(listingId);
-    } else {
-      addToFavorites(product);
-    }
+    if (isFavorite) removeFromFavorites(listingId);
+    else addToFavorites(product);
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f7f8" }}>
       {/* Fixed Top Navigation */}
       <SafeAreaView
+        edges={["top"]}
         style={{
           position: "absolute",
           top: 0,
@@ -111,7 +192,7 @@ const Detail = () => {
           justifyContent: "space-between",
           alignItems: "center",
           paddingHorizontal: 16,
-          paddingVertical: 12,
+          paddingVertical: 8,
         }}
       >
         <Pressable
@@ -120,7 +201,7 @@ const Detail = () => {
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            backgroundColor: "rgba(255,255,255,0.92)",
             justifyContent: "center",
             alignItems: "center",
             shadowColor: "#000",
@@ -133,14 +214,14 @@ const Detail = () => {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#222" />
         </Pressable>
 
-        <View style={{ flexDirection: "row", gap: 12 }}>
+        <View style={{ flexDirection: "row", gap: 10 }}>
           <Pressable
             onPress={toggleFavorite}
             style={{
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
+              backgroundColor: "rgba(255,255,255,0.92)",
               justifyContent: "center",
               alignItems: "center",
               shadowColor: "#000",
@@ -152,617 +233,406 @@ const Detail = () => {
           >
             <MaterialCommunityIcons
               name={isFavorite ? "heart" : "heart-outline"}
-              size={24}
+              size={22}
               color={isFavorite ? "#FF4444" : "#222"}
             />
+          </Pressable>
+          <Pressable
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "rgba(255,255,255,0.92)",
+              justifyContent: "center",
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+          >
+            <MaterialCommunityIcons name="share-variant-outline" size={20} color="#222" />
           </Pressable>
         </View>
       </SafeAreaView>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        style={{ flex: 1 }}
-      >
-        {/* Hero Carousel */}
-        <View
-          style={{
-            width: "100%",
-            height: Dimensions.get("window").height * 0.45,
-            backgroundColor: "#e0e0e0",
-            overflow: "hidden",
-          }}
-        >
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        {/* Image Carousel */}
+        <View style={{ width: "100%", height: SCREEN_WIDTH * 0.85, backgroundColor: "#e8e8e8" }}>
           <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={16}
-            onMomentumScrollEnd={(event) => {
-              const slide = Math.round(
-                event.nativeEvent.contentOffset.x /
-                  event.nativeEvent.layoutMeasurement.width
-              );
-              setCurrentSlide(slide);
+            onMomentumScrollEnd={(e) => {
+              setCurrentSlide(Math.round(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width));
             }}
           >
             {images.map((image, index) => (
               <Image
                 key={index}
                 source={{ uri: image }}
-                style={{
-                  width: Dimensions.get("window").width,
-                  height: Dimensions.get("window").height * 0.45,
-                  resizeMode: "cover",
-                }}
+                style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 0.85, resizeMode: "cover" }}
               />
             ))}
           </ScrollView>
 
-          {/* Pagination Dots */}
+          {/* Image Counter */}
           <View
             style={{
               position: "absolute",
-              bottom: 20,
+              bottom: 40,
+              right: 16,
+              backgroundColor: "rgba(0,0,0,0.6)",
+              borderRadius: 12,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>
+              {currentSlide + 1}/{images.length}
+            </Text>
+          </View>
+
+          {/* Dots */}
+          <View
+            style={{
+              position: "absolute",
+              bottom: 40,
               left: 0,
               right: 0,
               flexDirection: "row",
               justifyContent: "center",
-              gap: 8,
+              gap: 6,
             }}
           >
-            {images.map((_, index) => (
+            {images.map((_, i) => (
               <View
-                key={index}
+                key={i}
                 style={{
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor:
-                    index === currentSlide
-                      ? "#359EFF"
-                      : "rgba(255, 255, 255, 0.8)",
-                  width: index === currentSlide ? 24 : 8,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: i === currentSlide ? "#359EFF" : "rgba(255,255,255,0.6)",
+                  width: i === currentSlide ? 20 : 6,
                 }}
               />
             ))}
           </View>
+
+          {/* Status Badge on Image */}
+          {isSold && (
+            <View
+              style={{
+                position: "absolute",
+                top: 100,
+                left: 16,
+                backgroundColor: statusInfo.bg,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 8,
+              }}
+            >
+              <MaterialCommunityIcons name={statusInfo.icon} size={14} color={statusInfo.color} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: statusInfo.color }}>{statusInfo.label}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Content Container */}
+        {/* Content */}
         <View
           style={{
             marginTop: -24,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             backgroundColor: "#f5f7f8",
-            paddingHorizontal: 16,
-            paddingTop: 24,
+            paddingTop: 20,
             paddingBottom: 120,
           }}
         >
-          {/* Category Badge & Title & Price */}
-          <View style={{ marginBottom: 20 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-                marginBottom: 12,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    backgroundColor: "#e8e8e8",
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 20,
-                    alignSelf: "flex-start",
-                    marginBottom: 8,
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="bike"
-                    size={14}
-                    color="#666"
-                  />
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: "#666",
-                    }}
-                  >
-                    {vehicleData.bike_type || "Bike"}
-                  </Text>
-                </View>
-                <Text
-                  style={{
-                    fontSize: 24,
-                    fontWeight: "bold",
-                    color: "#111",
-                    lineHeight: 32,
-                  }}
-                >
-                  {vehicleData.brand} {vehicleData.model}
-                </Text>
+          {/* Title, Price & Status */}
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  backgroundColor: "#e8f4ff",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                }}
+              >
+                <MaterialCommunityIcons name="bike" size={13} color="#359EFF" />
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#359EFF" }}>{vehicleData.bike_type || "Bike"}</Text>
               </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text
-                  style={{
-                    fontSize: 24,
-                    fontWeight: "bold",
-                    color: "#359EFF",
-                  }}
-                >
-                  {price ? `₫${price.toLocaleString('vi-VN')}` : "N/A"}
-                </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  backgroundColor: conditionInfo.color + "18",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "600", color: conditionInfo.color }}>{conditionInfo.label}</Text>
               </View>
-            </View>
-
-            {/* Posted Time */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={16}
-                color="#999"
-              />
-              <Text style={{ fontSize: 12, color: "#999" }}>
-                Posted recently • {product.listing_id ? "Active" : "Listing"}
-              </Text>
-            </View>
-          </View>
-
-          {/* Seller Card */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              backgroundColor: "#fff",
-              paddingHorizontal: 12,
-              paddingVertical: 12,
-              borderRadius: 16,
-              marginBottom: 20,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-              borderWidth: 1,
-              borderColor: "#f0f0f0",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ position: "relative" }}>
-                <Image
-                  source={{
-                    uri: "https://lh3.googleusercontent.com/aida-public/AB6AXuC-b9u-W_zh-zRNoZOdiM91AFkt1s5jVzg1Iymv1VdCzXL2Iqj787Nv4S07RpjkkGCu5HGYPYjZwSp-AgOzz519FtYLHLoXc1zPB3iYbdTpz1XAbIWdY-aDneiK-CQJqCIMnNgLKxWAqoQLyh-RqB8e09AYIs76_87IimroaUEmepiDz2WYFs6MsA0F23psnv1fFZZBouFSbCp4Wjzmddr-trxFWbtmvPvoKO80cM3sXSTUiSjYWRyAk5FRrhAqZgrn_nTbJohIdYg",
-                  }}
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 24,
-                    borderWidth: 2,
-                    borderColor: "#fff",
-                  }}
-                />
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    right: 0,
-                    width: 12,
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: "#359EFF",
-                    borderWidth: 2,
-                    borderColor: "#fff",
-                  }}
-                />
-              </View>
-              <View>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "bold",
-                    color: "#111",
-                  }}
-                >
-                  {sellerData.full_name || "Unknown Seller"}
-                </Text>
+              {!isSold && (
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 4,
-                    marginTop: 2,
+                    backgroundColor: statusInfo.bg,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 20,
                   }}
                 >
-                  <MaterialCommunityIcons
-                    name="star"
-                    size={12}
-                    color="#FFA500"
-                  />
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: "#111" }}>
-                    4.8
-                  </Text>
-                  <Text style={{ fontSize: 10, color: "#999" }}>
-                    (24 reviews)
-                  </Text>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusInfo.color }} />
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: statusInfo.color }}>{statusInfo.label}</Text>
                 </View>
+              )}
+            </View>
+
+            <Text style={{ fontSize: 22, fontWeight: "bold", color: "#111", lineHeight: 28, marginBottom: 6 }}>
+              {vehicleData.brand} {vehicleData.model}
+            </Text>
+
+            <Text style={{ fontSize: 26, fontWeight: "800", color: "#359EFF", marginBottom: 8 }}>
+              {price ? `₫${price.toLocaleString("vi-VN")}` : "Contact for price"}
+            </Text>
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <MaterialCommunityIcons name="clock-outline" size={14} color="#999" />
+                <Text style={{ fontSize: 12, color: "#999" }}>{formatTimeAgo(product.created_at)}</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <MaterialCommunityIcons name="calendar" size={14} color="#999" />
+                <Text style={{ fontSize: 12, color: "#999" }}>{vehicleData.year}</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <MaterialCommunityIcons name="road-variant" size={14} color="#999" />
+                <Text style={{ fontSize: 12, color: "#999" }}>{vehicleData.mileage_km ?? "N/A"} km</Text>
               </View>
             </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color="#999"
-            />
           </View>
 
-          {/* Specifications */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "bold",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Specifications
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 12,
-              }}
-            >
-              {/* Brand */}
-              <View
-                style={{
-                  flex: 1,
-                  minWidth: "45%",
-                  backgroundColor: "#fff",
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#f0f0f0",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "600",
-                    color: "#999",
-                    marginBottom: 6,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  Brand
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: "#111",
-                  }}
-                >
-                  {vehicleData.brand}
-                </Text>
-              </View>
-
-              {/* Frame Size */}
-              <View
-                style={{
-                  flex: 1,
-                  minWidth: "45%",
-                  backgroundColor: "#fff",
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#f0f0f0",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "600",
-                    color: "#999",
-                    marginBottom: 6,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  Frame Size
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: "#111",
-                  }}
-                >
-                  {vehicleData.frame_size}cm (M)
-                </Text>
-              </View>
-
-              {/* Year */}
-              <View
-                style={{
-                  flex: 1,
-                  minWidth: "45%",
-                  backgroundColor: "#fff",
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#f0f0f0",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "600",
-                    color: "#999",
-                    marginBottom: 6,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  Year
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: "#111",
-                  }}
-                >
-                  {vehicleData.year}
-                </Text>
-              </View>
-
-              {/* Condition */}
-              <View
-                style={{
-                  flex: 1,
-                  minWidth: "45%",
-                  backgroundColor: "#fff",
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "#f0f0f0",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "600",
-                    color: "#999",
-                    marginBottom: 6,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  Condition
-                </Text>
+          {/* Seller Card */}
+          <Pressable
+            style={{
+              marginHorizontal: 16,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              backgroundColor: "#fff",
+              paddingHorizontal: 14,
+              paddingVertical: 14,
+              borderRadius: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: "#f0f0f0",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.04,
+              shadowRadius: 3,
+              elevation: 1,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ position: "relative" }}>
                 <View
                   style={{
-                    flexDirection: "row",
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: "#e8f4ff",
+                    justifyContent: "center",
                     alignItems: "center",
-                    gap: 6,
                   }}
                 >
-                  <Text
+                  <Text style={{ fontSize: 18, fontWeight: "700", color: "#359EFF" }}>
+                    {(sellerData.full_name || "U").charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                {sellerData.is_verified && (
+                  <View
                     style={{
-                      fontSize: 14,
-                      fontWeight: "600",
-                      color: "#111",
+                      position: "absolute",
+                      bottom: -1,
+                      right: -1,
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: "#359EFF",
+                      borderWidth: 2,
+                      borderColor: "#fff",
+                      justifyContent: "center",
+                      alignItems: "center",
                     }}
                   >
-                    {vehicleData.condition}
-                  </Text>
-                  <MaterialCommunityIcons
-                    name="information"
-                    size={14}
-                    color="#FFA500"
-                  />
-                </View>
+                    <MaterialCommunityIcons name="check" size={9} color="#fff" />
+                  </View>
+                )}
               </View>
+              <View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: "#111" }}>
+                    {sellerData.full_name || "Unknown Seller"}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
+                  Member since {sellerData.created_at ? new Date(sellerData.created_at).toLocaleDateString("vi-VN") : "N/A"}
+                </Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={22} color="#ccc" />
+          </Pressable>
+
+          {/* Specifications */}
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <Text style={{ fontSize: 17, fontWeight: "bold", color: "#111", marginBottom: 12 }}>Specifications</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              <SpecCard icon="tag" label="Brand" value={vehicleData.brand} />
+              <SpecCard icon="bike" label="Model" value={vehicleData.model} />
+              <SpecCard icon="calendar-range" label="Year" value={vehicleData.year?.toString()} />
+              <SpecCard icon="road-variant" label="Bike Type" value={vehicleData.bike_type} />
+              <SpecCard icon="texture-box" label="Material" value={vehicleData.material} />
+              <SpecCard icon="car-brake-hold" label="Brake Type" value={vehicleData.brake_type} />
+              <SpecCard icon="tire" label="Wheel Size" value={vehicleData.wheel_size ? `${vehicleData.wheel_size}"` : null} />
+              <SpecCard icon="arrow-expand-vertical" label="Frame Size" value={vehicleData.frame_size} />
+              <SpecCard icon="cog" label="Groupset" value={vehicleData.groupset} />
+              <SpecCard icon="gauge" label="Usage Level" value={vehicleData.usage_level} />
+              <SpecCard icon="map-marker-distance" label="Mileage" value={vehicleData.mileage_km != null ? `${vehicleData.mileage_km} km` : null} />
+              <SpecCard icon="barcode" label="Frame Serial" value={vehicleData.frame_serial} />
+            </View>
+          </View>
+
+          {/* Tags */}
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <BadgeTag icon="check-decagram" label="Original Parts" active={vehicleData.is_original} />
+              <BadgeTag icon="receipt" label="Has Receipt" active={vehicleData.has_receipt} />
             </View>
           </View>
 
           {/* Description */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "bold",
-                color: "#111",
-                marginBottom: 12,
-              }}
-            >
-              Description
-            </Text>
-            <View>
-              <Text
-                style={{
-                  fontSize: 14,
-                  lineHeight: 22,
-                  color: "#666",
-                  marginBottom: 8,
-                }}
-                numberOfLines={showFullDescription ? undefined : 3}
-              >
-                {vehicleData.description}
-              </Text>
-              <Pressable onPress={() => setShowFullDescription(!showFullDescription)}>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "600",
-                    color: "#359EFF",
-                  }}
-                >
-                  {showFullDescription ? "Show less" : "Read more"}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Safety Verification */}
-          <View
-            style={{
-              backgroundColor: "rgba(51, 158, 255, 0.1)",
-              borderWidth: 1,
-              borderColor: "rgba(51, 158, 255, 0.2)",
-              borderRadius: 12,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              flexDirection: "row",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <Text style={{ fontSize: 17, fontWeight: "bold", color: "#111", marginBottom: 10 }}>Description</Text>
             <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "rgba(51, 158, 255, 0.2)",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <MaterialCommunityIcons
-                name="shield-check"
-                size={20}
-                color="#359EFF"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "bold",
-                  color: "#0066CC",
-                  marginBottom: 4,
-                }}
-              >
-                Marketplace Verified
-              </Text>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: "#0066CC",
-                  lineHeight: 16,
-                }}
-              >
-                This seller has verified their identity and the serial number has
-                been checked against theft databases.
-              </Text>
-            </View>
-          </View>
-
-          {/* Location */}
-          <View style={{ marginBottom: 20 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "bold",
-                  color: "#111",
-                }}
-              >
-                Location
-              </Text>
-              <Text style={{ fontSize: 12, color: "#999" }}>
-                Thu Duc, HCM City
-              </Text>
-            </View>
-            <View
-              style={{
-                width: "100%",
-                height: 160,
+                backgroundColor: "#fff",
                 borderRadius: 12,
-                overflow: "hidden",
-                backgroundColor: "#e0e0e0",
-                justifyContent: "center",
-                alignItems: "center",
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: "#f0f0f0",
               }}
             >
-              <Image
-                source={{
-                  uri: "https://lh3.googleusercontent.com/aida-public/AB6AXuAgUyzTog6slhiebc_zIEQ3De-iOlItrU24_RS-vJR2wk1ufNg-FAO2Od_KaDcHlgEYfI4TsnngpyoSfYQI5d_m7GbSbKt7gT0GPiUMXKRbVM7uz_yTZvlx2a8jd9Q5Ni2yppz57sZSEjg3gyn8GqdL9CEqMNuw9KEr6dbDH4w1_j86y_8bInFYpUspmqnKERt8mJHsVedUkfiylLbmGkDZ5UfbWD-k3VSYEF-DWgP64o4clTkCec0suakomgxlICvW0M8GeNetMNw",
-                }}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  opacity: 0.8,
-                }}
-              />
+              <Text
+                style={{ fontSize: 14, lineHeight: 22, color: "#555" }}
+                numberOfLines={showFullDescription ? undefined : 4}
+              >
+                {vehicleData.description || "No description provided."}
+              </Text>
+              {vehicleData.description && vehicleData.description.length > 100 && (
+                <Pressable onPress={() => setShowFullDescription(!showFullDescription)} style={{ marginTop: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#359EFF" }}>
+                    {showFullDescription ? "Show less" : "Read more"}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          {/* Verification */}
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <View
+              style={{
+                backgroundColor: "#eff6ff",
+                borderWidth: 1,
+                borderColor: "#bfdbfe",
+                borderRadius: 14,
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                flexDirection: "row",
+                gap: 12,
+              }}
+            >
               <View
                 style={{
-                  position: "absolute",
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: "rgba(51, 158, 255, 0.2)",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#dbeafe",
                   justifyContent: "center",
                   alignItems: "center",
                 }}
               >
-                <View
-                  style={{
-                    width: 12,
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: "#359EFF",
-                    borderWidth: 2,
-                    borderColor: "#fff",
-                  }}
-                />
+                <MaterialCommunityIcons name="shield-check" size={22} color="#2563eb" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#1e40af", marginBottom: 3 }}>
+                  Marketplace Verified
+                </Text>
+                <Text style={{ fontSize: 12, color: "#3b82f6", lineHeight: 18 }}>
+                  Seller identity verified. Frame serial #{vehicleData.frame_serial || "N/A"} checked against theft databases.
+                </Text>
               </View>
             </View>
-            <Text
+          </View>
+
+          {/* Listing Info */}
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <Text style={{ fontSize: 17, fontWeight: "bold", color: "#111", marginBottom: 10 }}>Listing Info</Text>
+            <View
               style={{
-                fontSize: 10,
-                color: "#999",
-                textAlign: "center",
-                marginTop: 8,
+                backgroundColor: "#fff",
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "#f0f0f0",
+                overflow: "hidden",
               }}
             >
-              Location is approximate to protect seller privacy.
-            </Text>
+              {[
+                { label: "Listed", value: product.created_at ? new Date(product.created_at).toLocaleDateString("vi-VN") : "N/A" },
+                { label: "Status", value: statusInfo.label, color: statusInfo.color },
+                product.approved_at && { label: "Approved", value: new Date(product.approved_at).toLocaleDateString("vi-VN") },
+                product.expires_at && { label: "Expires", value: new Date(product.expires_at).toLocaleDateString("vi-VN") },
+              ]
+                .filter(Boolean)
+                .map((item, idx) => (
+                  <View
+                    key={idx}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: "#f5f5f5",
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, color: "#999" }}>{item.label}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: item.color || "#333" }}>{item.value}</Text>
+                  </View>
+                ))}
+            </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Sticky Bottom Action Bar */}
-      <View
+      {/* Bottom Action Bar */}
+      <SafeAreaView
+        edges={["bottom"]}
         style={{
           position: "absolute",
           bottom: 0,
@@ -771,138 +641,108 @@ const Detail = () => {
           backgroundColor: "#fff",
           borderTopWidth: 1,
           borderTopColor: "#f0f0f0",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          paddingBottom: 20,
-          flexDirection: "row",
-          gap: 8,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 4,
-          elevation: 5,
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
+          elevation: 8,
         }}
       >
-        <Pressable
-          style={{
-            flex: 1,
-            height: 56,
-            borderRadius: 12,
-            borderWidth: 2,
-            borderColor: "#e0e0e0",
-            justifyContent: "center",
-            alignItems: "center",
-            flexDirection: "row",
-            gap: 8,
-          }}
-        >
-          <MaterialCommunityIcons
-            name="chat-outline"
-            size={20}
-            color="#111"
-          />
-          <Text
+        {isSold ? (
+          <View
             style={{
-              fontSize: 14,
-              fontWeight: "bold",
-              color: "#111",
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
             }}
           >
-            Chat
-          </Text>
-        </Pressable>
-        
-        {/* Add to Cart Button */}
-        <Pressable
-          onPress={handleAddToCart}
-          disabled={isAddingToCart || isInCart}
-          style={{
-            flex: 1.2,
-            height: 56,
-            borderRadius: 12,
-            backgroundColor: isInCart ? "#d1fae5" : (isAddingToCart ? "#f3f4f6" : "#f0f9ff"),
-            borderWidth: 2,
-            borderColor: isInCart ? "#16a34a" : "#359EFF",
-            justifyContent: "center",
-            alignItems: "center",
-            flexDirection: "row",
-            gap: 8,
-          }}
-        >
-          {isAddingToCart ? (
-            <>
-              <ActivityIndicator size="small" color="#359EFF" />
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "bold",
-                  color: "#359EFF",
-                }}
-              >
-                Adding...
-              </Text>
-            </>
-          ) : (
-            <>
-              <MaterialCommunityIcons
-                name={isInCart ? "check" : "cart-plus"}
-                size={20}
-                color={isInCart ? "#16a34a" : "#359EFF"}
-              />
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "bold",
-                  color: isInCart ? "#16a34a" : "#359EFF",
-                }}
-              >
-                {isInCart ? "In Cart" : "Add to Cart"}
-              </Text>
-            </>
-          )}
-        </Pressable>
-        
-        <Pressable
-          onPress={() => navigation.navigate('Checkout', { 
-            listing: {
-              id: listingId,
-              title: `${vehicleData.brand} ${vehicleData.model}`,
-              price: price,
-              ...product
-            }
-          })}
-          style={{
-            flex: 1.5,
-            height: 56,
-            borderRadius: 12,
-            backgroundColor: "#359EFF",
-            justifyContent: "center",
-            alignItems: "center",
-            flexDirection: "row",
-            gap: 8,
-            shadowColor: "#359EFF",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 5,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "bold",
-              color: "#fff",
-            }}
-          >
-            Buy Now
-          </Text>
-          <MaterialCommunityIcons
-            name="arrow-right"
-            size={20}
-            color="#fff"
-          />
-        </Pressable>
-      </View>
+            <MaterialCommunityIcons name="tag-check" size={20} color="#dc2626" />
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#dc2626" }}>This item has been sold</Text>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row", gap: 8 }}>
+            <Pressable
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: "#e0e0e0",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <MaterialCommunityIcons name="chat-outline" size={22} color="#333" />
+            </Pressable>
+
+            <Pressable
+              onPress={handleAddToCart}
+              disabled={isAddingToCart || isInCart}
+              style={{
+                flex: 1,
+                height: 52,
+                borderRadius: 14,
+                backgroundColor: isInCart ? "#dcfce7" : "#f0f9ff",
+                borderWidth: 1.5,
+                borderColor: isInCart ? "#16a34a" : "#359EFF",
+                justifyContent: "center",
+                alignItems: "center",
+                flexDirection: "row",
+                gap: 6,
+              }}
+            >
+              {isAddingToCart ? (
+                <ActivityIndicator size="small" color="#359EFF" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name={isInCart ? "check" : "cart-plus"}
+                    size={18}
+                    color={isInCart ? "#16a34a" : "#359EFF"}
+                  />
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: isInCart ? "#16a34a" : "#359EFF" }}>
+                    {isInCart ? "In Cart" : "Add to Cart"}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={() =>
+                navigation.navigate("Checkout", {
+                  listing: {
+                    id: listingId,
+                    title: `${vehicleData.brand} ${vehicleData.model}`,
+                    price,
+                    ...product,
+                  },
+                })
+              }
+              style={{
+                flex: 1.3,
+                height: 52,
+                borderRadius: 14,
+                backgroundColor: "#359EFF",
+                justifyContent: "center",
+                alignItems: "center",
+                flexDirection: "row",
+                gap: 6,
+                shadowColor: "#359EFF",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 5,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Buy Now</Text>
+              <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+            </Pressable>
+          </View>
+        )}
+      </SafeAreaView>
     </View>
   );
 };
