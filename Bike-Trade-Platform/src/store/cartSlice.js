@@ -13,6 +13,7 @@ export const fetchCart = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await getMyCart();
+      // Backend: { success, data: { cart, items (CartItemView[]), totalAmount, itemCount, ... } }
       const cartData = response?.data || response;
       return {
         items: cartData?.items || [],
@@ -29,7 +30,7 @@ export const addToCart = createAsyncThunk(
   'cart/addToCart',
   async (productData, { getState, rejectWithValue, dispatch }) => {
     const { cart } = getState();
-    
+
     // Optimistic update data
     const tempItem = {
       id: `temp-${Date.now()}`,
@@ -47,7 +48,7 @@ export const addToCart = createAsyncThunk(
       // Then call API
       const response = await addToCartAPI(productData);
       const newItem = response?.data || response;
-      
+
       return {
         tempId: tempItem.id,
         item: newItem,
@@ -64,15 +65,16 @@ export const updateCartItem = createAsyncThunk(
   'cart/updateCartItem',
   async ({ cartItemId, quantity }, { getState, rejectWithValue, dispatch }) => {
     const { cart } = getState();
-    const originalItem = cart.items.find(item => item.id === cartItemId);
-    
+    // Backend returns cartItemId (not id)
+    const originalItem = cart.items.find(item => item.cartItemId === cartItemId);
+
     if (!originalItem) {
       return rejectWithValue('Item not found');
     }
 
     // Optimistic update
     const optimisticData = { cartItemId, quantity };
-    
+
     try {
       // First update UI
       dispatch(cartSlice.actions.updateItemOptimistic(optimisticData));
@@ -82,9 +84,9 @@ export const updateCartItem = createAsyncThunk(
       return response?.data || response;
     } catch (error) {
       // Revert on error
-      dispatch(cartSlice.actions.revertItemUpdate({ 
-        cartItemId, 
-        originalQuantity: originalItem.quantity 
+      dispatch(cartSlice.actions.revertItemUpdate({
+        cartItemId,
+        originalQuantity: originalItem.quantity
       }));
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -95,8 +97,9 @@ export const removeFromCart = createAsyncThunk(
   'cart/removeFromCart',
   async (cartItemId, { getState, rejectWithValue, dispatch }) => {
     const { cart } = getState();
-    const originalItem = cart.items.find(item => item.id === cartItemId);
-    
+    // Backend returns cartItemId (not id)
+    const originalItem = cart.items.find(item => item.cartItemId === cartItemId);
+
     if (!originalItem) {
       return rejectWithValue('Item not found');
     }
@@ -104,7 +107,7 @@ export const removeFromCart = createAsyncThunk(
     try {
       // Optimistic removal
       dispatch(cartSlice.actions.removeItemOptimistic(cartItemId));
-      
+
       // Call API
       await removeFromCartAPI(cartItemId);
       return cartItemId;
@@ -125,7 +128,7 @@ export const clearCart = createAsyncThunk(
     try {
       // Optimistic clear
       dispatch(cartSlice.actions.clearCartOptimistic());
-      
+
       // Call API
       await clearCartAPI();
       return true;
@@ -154,75 +157,77 @@ const cartSlice = createSlice({
       state.itemCount += item.quantity;
       state.totalAmount += item.price * item.quantity;
     },
-    
+
     removeOptimisticItem: (state, action) => {
       const tempId = action.payload;
-      const itemIndex = state.items.findIndex(item => item.id === tempId);
+      const itemIndex = state.items.findIndex(item => item.cartItemId === tempId);
       if (itemIndex !== -1) {
         const item = state.items[itemIndex];
         state.items.splice(itemIndex, 1);
         state.itemCount -= item.quantity;
-        state.totalAmount -= item.price * item.quantity;
+        state.totalAmount -= item.unitPrice * item.quantity;
       }
     },
-    
+
     updateItemOptimistic: (state, action) => {
       const { cartItemId, quantity } = action.payload;
-      const item = state.items.find(item => item.id === cartItemId);
+      const item = state.items.find(item => item.cartItemId === cartItemId);
       if (item) {
         const oldQuantity = item.quantity;
-        const priceDiff = (quantity - oldQuantity) * item.price;
-        
+        const priceDiff = (quantity - oldQuantity) * item.unitPrice;
+
         item.quantity = quantity;
+        item.totalPrice = item.unitPrice * quantity;
         state.itemCount += (quantity - oldQuantity);
         state.totalAmount += priceDiff;
       }
     },
-    
+
     revertItemUpdate: (state, action) => {
       const { cartItemId, originalQuantity } = action.payload;
-      const item = state.items.find(item => item.id === cartItemId);
+      const item = state.items.find(item => item.cartItemId === cartItemId);
       if (item) {
         const currentQuantity = item.quantity;
-        const priceDiff = (originalQuantity - currentQuantity) * item.price;
-        
+        const priceDiff = (originalQuantity - currentQuantity) * item.unitPrice;
+
         item.quantity = originalQuantity;
+        item.totalPrice = item.unitPrice * originalQuantity;
         state.itemCount += (originalQuantity - currentQuantity);
         state.totalAmount += priceDiff;
       }
     },
-    
+
     removeItemOptimistic: (state, action) => {
       const cartItemId = action.payload;
-      const itemIndex = state.items.findIndex(item => item.id === cartItemId);
+      const itemIndex = state.items.findIndex(item => item.cartItemId === cartItemId);
       if (itemIndex !== -1) {
         const item = state.items[itemIndex];
         state.items.splice(itemIndex, 1);
         state.itemCount -= item.quantity;
-        state.totalAmount -= item.price * item.quantity;
+        state.totalAmount -= item.unitPrice * item.quantity;
       }
     },
-    
+
     restoreRemovedItem: (state, action) => {
       const item = action.payload;
       state.items.push(item);
       state.itemCount += item.quantity;
-      state.totalAmount += item.price * item.quantity;
+      state.totalAmount += item.unitPrice * item.quantity;
     },
-    
+
     clearCartOptimistic: (state) => {
       state.items = [];
       state.totalAmount = 0;
       state.itemCount = 0;
     },
-    
+
     restoreCartItems: (state, action) => {
       const items = action.payload;
       state.items = items;
-      state.totalAmount = items.reduce((total, item) => total + (item.price * item.quantity), 0);
+      state.totalAmount = items.reduce((total, item) => total + item.totalPrice, 0);
       state.itemCount = items.reduce((count, item) => count + item.quantity, 0);
     },
-    
+
     clearError: (state) => {
       state.error = null;
     },
@@ -244,7 +249,7 @@ const cartSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Add to cart
       .addCase(addToCart.fulfilled, (state, action) => {
         const { tempId, item } = action.payload;
@@ -260,7 +265,7 @@ const cartSlice = createSlice({
       .addCase(addToCart.rejected, (state, action) => {
         state.error = action.payload;
       })
-      
+
       // Update cart item
       .addCase(updateCartItem.fulfilled, (state) => {
         // Optimistic update already applied, just clear any pending state
@@ -269,7 +274,7 @@ const cartSlice = createSlice({
       .addCase(updateCartItem.rejected, (state, action) => {
         state.error = action.payload;
       })
-      
+
       // Remove from cart
       .addCase(removeFromCart.fulfilled, (state) => {
         state.error = null;
@@ -277,7 +282,7 @@ const cartSlice = createSlice({
       .addCase(removeFromCart.rejected, (state, action) => {
         state.error = action.payload;
       })
-      
+
       // Clear cart
       .addCase(clearCart.fulfilled, (state) => {
         state.error = null;

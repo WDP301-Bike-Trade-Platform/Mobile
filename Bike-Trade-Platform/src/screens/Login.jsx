@@ -54,12 +54,6 @@ const Login = () => {
 
         setEmail("");
         setPassword("");
-        
-        // Navigate to home after successful login
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "MainApp" }],
-        });
       } else {
         setErrorMessage("Invalid login response. Please try again.");
       }

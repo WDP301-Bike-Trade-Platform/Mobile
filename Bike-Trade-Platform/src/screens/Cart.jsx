@@ -73,18 +73,21 @@ const Cart = ({ navigation }) => {
   };
 
   const getItemImage = (item) => {
-    const media = item.listing?.media?.[0] || item.product?.images?.[0];
-    return media?.file_url || media?.url || media || null;
+    // Backend CartItemView: item.listing.media[]
+    const media = item.listing?.media?.[0];
+    return media?.file_url || media?.url || null;
   };
 
   const getItemTitle = (item) => {
-    const vehicle = item.listing?.vehicle || item.product;
+    // Backend CartItemView: item.listing.vehicle.brand, .model
+    const vehicle = item.listing?.vehicle;
     if (vehicle?.brand && vehicle?.model) return `${vehicle.brand} ${vehicle.model}`;
     return vehicle?.title || vehicle?.name || 'Sản phẩm';
   };
 
   const getSellerName = (item) => {
-    const seller = item.listing?.seller || item.seller;
+    // Backend CartItemView: item.seller.full_name
+    const seller = item.seller || item.listing?.seller;
     return seller?.full_name || seller?.name || null;
   };
 
@@ -92,14 +95,15 @@ const Cart = ({ navigation }) => {
     const imageUrl = getItemImage(item);
     const title = getItemTitle(item);
     const sellerName = getSellerName(item);
-    const price = item.price || item.listing?.vehicle?.price || 0;
+    // Backend CartItemView: unitPrice is the price per item
+    const price = item.unitPrice ?? item.totalPrice ?? 0;
 
     return (
       <View style={styles.cartItem}>
         <Pressable
           onPress={() =>
             navigation.navigate('Detail', {
-              listingId: item.listing_id || item.listing?.listing_id,
+              listingId: item.listingId || item.listing?.listing_id,
             })
           }
         >
@@ -126,7 +130,7 @@ const Cart = ({ navigation }) => {
 
         <Pressable
           style={styles.removeButton}
-          onPress={() => handleRemoveItem(item.id || item.cart_item_id)}
+          onPress={() => handleRemoveItem(item.cartItemId)}
         >
           <MaterialCommunityIcons
             name="trash-can-outline"
@@ -184,7 +188,7 @@ const Cart = ({ navigation }) => {
           <FlatList
             data={items}
             keyExtractor={(item) =>
-              (item.id || item.cart_item_id)?.toString() || Math.random().toString()
+              item.cartItemId?.toString() || Math.random().toString()
             }
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}

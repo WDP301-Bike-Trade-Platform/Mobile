@@ -53,10 +53,6 @@ const Profile = () => {
         style: "destructive",
         onPress: async () => {
           await logout();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "MainApp" }],
-          });
         },
       },
     ]);
