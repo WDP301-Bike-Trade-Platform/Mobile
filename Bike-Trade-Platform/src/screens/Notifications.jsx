@@ -192,12 +192,12 @@ const Notifications = ({ navigation }) => {
                 <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
                 <MaterialCommunityIcons name="arrow-left" size={28} color="#111" />
                 </Pressable>
-                <Text style={styles.headerTitle}>Thông báo</Text>
+                <Text style={styles.headerTitle}>Notifications</Text>
                 <View style={{ width: 40 }} />
             </View>
             <View style={styles.emptyContainer}>
                 <MaterialCommunityIcons name="bell-off-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyText}>Đăng nhập để xem thông báo</Text>
+                <Text style={styles.emptyText}>Log in to view notifications</Text>
             </View>
         </SafeAreaView>
      )
@@ -209,7 +209,7 @@ const Notifications = ({ navigation }) => {
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <MaterialCommunityIcons name="arrow-left" size={28} color="#111" />
         </Pressable>
-        <Text style={styles.headerTitle}>Thông báo</Text>
+        <Text style={styles.headerTitle}>Notifications</Text>
         <View style={styles.headerRight}>
           {unreadCount > 0 && (
             <Pressable onPress={handleMarkAllRead} style={styles.markAllBtn}>
@@ -226,7 +226,7 @@ const Notifications = ({ navigation }) => {
       ) : notifications.length === 0 ? (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="bell-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyText}>Bạn chưa có thông báo nào</Text>
+          <Text style={styles.emptyText}>You have no notifications</Text>
         </View>
       ) : (
         <FlatList

@@ -85,7 +85,7 @@ const Conversation = () => {
     if (!dateValue) return "";
     const date = new Date(dateValue);
     if (isNaN(date.getTime())) return "";
-    return date.toLocaleTimeString("vi-VN", {
+    return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -353,7 +353,7 @@ const Conversation = () => {
                   marginTop: 8,
                 }}
               >
-                Bắt đầu cuộc trò chuyện
+                Start a conversation
               </Text>
             </View>
           }
@@ -390,7 +390,7 @@ const Conversation = () => {
                 color: "#111827",
                 paddingVertical: 10,
               }}
-              placeholder="Nhập tin nhắn..."
+              placeholder="Type a message..."
               placeholderTextColor="#9ca3af"
               value={messageText}
               onChangeText={setMessageText}

@@ -137,7 +137,7 @@ const Chat = () => {
             }}
             numberOfLines={1}
           >
-            {item.lastMessage || "Chưa có tin nhắn"}
+            {item.lastMessage || "No messages yet"}
           </Text>
         </View>
       </Pressable>
@@ -166,7 +166,7 @@ const Chat = () => {
             letterSpacing: 0.5,
           }}
         >
-          Tin nhắn
+          Messages
         </Text>
       </View>
 
@@ -190,7 +190,7 @@ const Chat = () => {
               fontSize: 14,
               color: "#111827",
             }}
-            placeholder="Tìm kiếm trò chuyện..."
+            placeholder="Search conversations..."
             placeholderTextColor="#9ca3af"
             value={searchText}
             onChangeText={setSearchText}
@@ -251,7 +251,7 @@ const Chat = () => {
                   marginBottom: 8,
                 }}
               >
-                Chưa có cuộc trò chuyện nào
+                No conversations yet
               </Text>
               <Text
                 style={{
@@ -260,7 +260,7 @@ const Chat = () => {
                   textAlign: "center",
                 }}
               >
-                Bắt đầu trò chuyện với người bán hoặc người mua khác
+                Start chatting with sellers or other buyers
               </Text>
             </View>
           }

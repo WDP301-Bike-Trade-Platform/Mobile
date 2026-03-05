@@ -24,16 +24,16 @@ import OrderCard from '../component/OrderCard';
 import EmptyState from '../component/EmptyState';
 
 const TABS = [
-  { key: 'buy', label: 'Mua' },
-  { key: 'sell', label: 'Bán' },
+  { key: 'buy', label: 'Buy' },
+  { key: 'sell', label: 'Sell' },
 ];
 
 const STATUS_FILTERS = [
-  { label: 'Tất cả', value: null },
-  { label: 'Chờ xác nhận', value: OrderStatus.PENDING },
-  { label: 'Đã xác nhận', value: OrderStatus.CONFIRMED },
-  { label: 'Hoàn thành', value: OrderStatus.COMPLETED },
-  { label: 'Đã hủy', value: OrderStatus.CANCELLED },
+  { label: 'All', value: null },
+  { label: 'Pending', value: OrderStatus.PENDING },
+  { label: 'Confirmed', value: OrderStatus.CONFIRMED },
+  { label: 'Completed', value: OrderStatus.COMPLETED },
+  { label: 'Cancelled', value: OrderStatus.CANCELLED },
 ];
 
 const MyOrders = ({ navigation }) => {
@@ -51,7 +51,7 @@ const MyOrders = ({ navigation }) => {
       setOrders(Array.isArray(data) ? data : data?.data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      Alert.alert('Lỗi', 'Không thể tải danh sách đơn hàng');
+      Alert.alert('Error', 'Unable to load orders');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -72,19 +72,19 @@ const MyOrders = ({ navigation }) => {
   };
 
   const handleCancelOrder = (orderId) => {
-    Alert.alert('Hủy đơn hàng', 'Bạn chắc chắn muốn hủy đơn hàng này?', [
-      { text: 'Không', style: 'cancel' },
+    Alert.alert('Cancel Order', 'Are you sure you want to cancel this order?', [
+      { text: 'No', style: 'cancel' },
       {
-        text: 'Hủy đơn',
+        text: 'Cancel Order',
         style: 'destructive',
         onPress: async () => {
           try {
             await cancelOrder(orderId, 'Cancelled by buyer');
-            Alert.alert('Thành công', 'Đã hủy đơn hàng');
+            Alert.alert('Success', 'Order cancelled');
             fetchOrders();
           } catch (error) {
             console.error('Error canceling order:', error);
-            Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
+            Alert.alert('Error', 'Unable to cancel order');
           }
         },
       },
@@ -94,22 +94,22 @@ const MyOrders = ({ navigation }) => {
   const handleConfirmOrder = async (orderId) => {
     try {
       await confirmOrder(orderId, 'Confirmed by seller');
-      Alert.alert('Thành công', 'Đã xác nhận đơn hàng');
+      Alert.alert('Success', 'Order confirmed');
       fetchOrders();
     } catch (error) {
       console.error('Error confirming order:', error);
-      Alert.alert('Lỗi', 'Không thể xác nhận đơn hàng');
+      Alert.alert('Error', 'Unable to confirm order');
     }
   };
 
   const handleCompleteOrder = async (orderId) => {
     try {
       await completeOrder(orderId);
-      Alert.alert('Thành công', 'Đã hoàn thành đơn hàng');
+      Alert.alert('Success', 'Order completed');
       fetchOrders();
     } catch (error) {
       console.error('Error completing order:', error);
-      Alert.alert('Lỗi', 'Không thể hoàn thành đơn hàng');
+      Alert.alert('Error', 'Unable to complete order');
     }
   };
 
@@ -142,7 +142,7 @@ const MyOrders = ({ navigation }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-      <HeaderBar title="Đơn hàng" onBack={() => navigation.goBack()} />
+      <HeaderBar title="Orders" onBack={() => navigation.goBack()} />
 
       {/* Buy / Sell Tabs */}
       <View style={tabStyles.container}>
@@ -197,11 +197,11 @@ const MyOrders = ({ navigation }) => {
           {orders.length === 0 ? (
             <EmptyState
               icon="package-variant"
-              title={activeTab === 'buy' ? 'Chưa có đơn mua' : 'Chưa có đơn bán'}
+              title={activeTab === 'buy' ? 'No purchase orders' : 'No sales orders'}
               message={
                 activeTab === 'buy'
-                  ? 'Bạn chưa mua đơn hàng nào'
-                  : 'Bạn chưa có đơn hàng nào từ người mua'
+                  ? 'You haven\'t placed any orders yet'
+                  : 'You haven\'t received any orders from buyers yet'
               }
             />
           ) : (

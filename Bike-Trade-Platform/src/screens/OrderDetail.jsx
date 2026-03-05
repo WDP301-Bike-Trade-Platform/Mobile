@@ -19,10 +19,10 @@ import { formatPrice, formatDateTime, decimalToNumber } from '../utils/formatter
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const STATUS_MAP = {
-  PENDING: 'Chờ thanh toán',
-  CONFIRMED: 'Đã xác nhận',
-  COMPLETED: 'Hoàn thành',
-  CANCELLED: 'Đã hủy',
+  PENDING: 'Pending Payment',
+  CONFIRMED: 'Confirmed',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
 };
 
 const STATUS_COLORS = {
@@ -54,7 +54,7 @@ const OrderDetail = ({ route, navigation }) => {
       setOrder(response?.data || response);
     } catch (error) {
       console.error('Error fetching order detail:', error);
-      Alert.alert('Lỗi', 'Không thể tải chi tiết đơn hàng');
+      Alert.alert('Error', 'Unable to load order details');
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -72,33 +72,33 @@ const OrderDetail = ({ route, navigation }) => {
         if (supported) {
           await Linking.openURL(paymentData.paymentLink);
         } else {
-          Alert.alert('Lỗi', 'Không thể mở link thanh toán');
+          Alert.alert('Error', 'Unable to open payment link');
         }
       }
     } catch (error) {
       console.error('Error creating payment:', error);
-      Alert.alert('Lỗi', 'Không thể tạo link thanh toán');
+      Alert.alert('Error', 'Unable to create payment link');
     } finally {
       setProcessingPayment(false);
     }
   };
 
   const handleCancelOrder = () => {
-    Alert.alert('Hủy đơn hàng', 'Bạn chắc chắn muốn hủy đơn hàng này?', [
-      { text: 'Không', style: 'cancel' },
+    Alert.alert('Cancel Order', 'Are you sure you want to cancel this order?', [
+      { text: 'No', style: 'cancel' },
       {
-        text: 'Hủy đơn',
+        text: 'Cancel Order',
         style: 'destructive',
         onPress: async () => {
           try {
             setProcessingAction(true);
             await cancelOrder(orderId, 'Cancelled by buyer');
-            Alert.alert('Thành công', 'Đã hủy đơn hàng', [
+            Alert.alert('Success', 'Order cancelled', [
               { text: 'OK', onPress: () => navigation.goBack() },
             ]);
           } catch (error) {
             console.error('Error canceling order:', error);
-            Alert.alert('Lỗi', 'Không thể hủy đơn hàng');
+            Alert.alert('Error', 'Unable to cancel order');
           } finally {
             setProcessingAction(false);
           }
@@ -108,19 +108,19 @@ const OrderDetail = ({ route, navigation }) => {
   };
 
   const handleConfirmOrder = () => {
-    Alert.alert('Xác nhận đơn hàng', 'Bạn chắc chắn muốn xác nhận đơn hàng COD này?', [
-      { text: 'Không', style: 'cancel' },
+    Alert.alert('Confirm Order', 'Are you sure you want to confirm this COD order?', [
+      { text: 'No', style: 'cancel' },
       {
-        text: 'Xác nhận',
+        text: 'Confirm',
         onPress: async () => {
           try {
             setProcessingAction(true);
             await confirmOrder(orderId, 'Confirmed by seller');
-            Alert.alert('Thành công', 'Đã xác nhận đơn hàng');
+            Alert.alert('Success', 'Order confirmed');
             fetchOrderDetail();
           } catch (error) {
             console.error('Error confirming order:', error);
-            Alert.alert('Lỗi', 'Không thể xác nhận đơn hàng');
+            Alert.alert('Error', 'Unable to confirm order');
           } finally {
             setProcessingAction(false);
           }
@@ -130,19 +130,19 @@ const OrderDetail = ({ route, navigation }) => {
   };
 
   const handleCompleteOrder = () => {
-    Alert.alert('Hoàn thành đơn hàng', 'Xác nhận đã nhận hàng và hoàn thành đơn hàng?', [
-      { text: 'Không', style: 'cancel' },
+    Alert.alert('Complete Order', 'Confirm you have received the items and complete the order?', [
+      { text: 'No', style: 'cancel' },
       {
-        text: 'Hoàn thành',
+        text: 'Complete',
         onPress: async () => {
           try {
             setProcessingAction(true);
             await completeOrder(orderId);
-            Alert.alert('Thành công', 'Đã hoàn thành đơn hàng');
+            Alert.alert('Success', 'Order completed');
             fetchOrderDetail();
           } catch (error) {
             console.error('Error completing order:', error);
-            Alert.alert('Lỗi', 'Không thể hoàn thành đơn hàng');
+            Alert.alert('Error', 'Unable to complete order');
           } finally {
             setProcessingAction(false);
           }
@@ -183,7 +183,7 @@ const OrderDetail = ({ route, navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-        <HeaderBar title="Chi tiết đơn hàng" onBack={() => navigation.goBack()} />
+        <HeaderBar title="Order Details" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#389cfa" />
         </View>
@@ -194,9 +194,9 @@ const OrderDetail = ({ route, navigation }) => {
   if (!order) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-        <HeaderBar title="Chi tiết đơn hàng" onBack={() => navigation.goBack()} />
+        <HeaderBar title="Order Details" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ fontSize: 16, color: '#9ca3af' }}>Không tìm thấy đơn hàng</Text>
+          <Text style={{ fontSize: 16, color: '#9ca3af' }}>Order not found</Text>
         </View>
       </SafeAreaView>
     );
@@ -220,7 +220,7 @@ const OrderDetail = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f6f7f8' }}>
-      <HeaderBar title="Chi tiết đơn hàng" onBack={() => navigation.goBack()} />
+      <HeaderBar title="Order Details" onBack={() => navigation.goBack()} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
@@ -259,12 +259,12 @@ const OrderDetail = ({ route, navigation }) => {
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <MaterialCommunityIcons name="information-outline" size={20} color="#389cfa" />
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Thông tin đơn hàng</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Order Information</Text>
           </View>
-          <InfoRow label="Mã đơn" value={`#${order.order_id?.slice(0, 8)}`} />
-          <InfoRow label="Phương thức" value={meta.paymentMethod || 'N/A'} />
+          <InfoRow label="Order ID" value={`#${order.order_id?.slice(0, 8)}`} />
+          <InfoRow label="Payment Method" value={meta.paymentMethod || 'N/A'} />
           {meta.depositRequired && (
-            <InfoRow label="Đặt cọc" value={meta.depositPaid ? 'Đã cọc' : 'Chưa cọc'} valueColor={meta.depositPaid ? '#16a34a' : '#d97706'} />
+            <InfoRow label="Deposit" value={meta.depositPaid ? 'Paid' : 'Unpaid'} valueColor={meta.depositPaid ? '#16a34a' : '#d97706'} />
           )}
         </View>
 
@@ -272,7 +272,7 @@ const OrderDetail = ({ route, navigation }) => {
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <MaterialCommunityIcons name="package-variant" size={20} color="#389cfa" />
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Sản phẩm</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Products</Text>
           </View>
 
           {order.orderDetails && order.orderDetails.length > 0 ? (
@@ -309,15 +309,15 @@ const OrderDetail = ({ route, navigation }) => {
 
               {/* Summary */}
               <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                <SummaryRow label={`Tổng (${order.orderDetails.reduce((s, i) => s + i.quantity, 0)} sản phẩm)`}
+                <SummaryRow label={`Total (${order.orderDetails.reduce((s, i) => s + i.quantity, 0)} items)`}
                   value={`đ${formatPrice(meta.totalAmount || order.orderDetails.reduce((s, i) => s + decimalToNumber(i.total_price), 0))}`} />
                 {meta.depositRequired && (
-                  <SummaryRow label="Tiền cọc" value={`đ${formatPrice(meta.depositAmount || decimalToNumber(order.deposit_amount))}`} />
+                  <SummaryRow label="Deposit" value={`đ${formatPrice(meta.depositAmount || decimalToNumber(order.deposit_amount))}`} />
                 )}
                 <View style={{ height: 1, backgroundColor: '#f3f4f6', marginVertical: 8 }} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>
-                    {meta.depositRequired ? 'Cần thanh toán' : 'Tổng cộng'}
+                    {meta.depositRequired ? 'Amount Due' : 'Total'}
                   </Text>
                   <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
                     đ{formatPrice(meta.depositAmount || meta.totalAmount || decimalToNumber(order.deposit_amount))}
@@ -335,7 +335,7 @@ const OrderDetail = ({ route, navigation }) => {
               </Text>
             </>
           ) : (
-            <Text style={{ fontSize: 14, color: '#9ca3af' }}>Không có sản phẩm</Text>
+            <Text style={{ fontSize: 14, color: '#9ca3af' }}>No products</Text>
           )}
         </View>
 
@@ -344,7 +344,7 @@ const OrderDetail = ({ route, navigation }) => {
           <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <MaterialCommunityIcons name="map-marker-outline" size={20} color="#389cfa" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Địa chỉ giao hàng</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Shipping Address</Text>
             </View>
             <Text style={{ fontSize: 14, color: '#374151', lineHeight: 22 }}>
               {formatAddress(shippingAddr)}
@@ -357,11 +357,11 @@ const OrderDetail = ({ route, navigation }) => {
           <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <MaterialCommunityIcons name="account-outline" size={20} color="#389cfa" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Thông tin người mua</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Buyer Information</Text>
             </View>
-            <InfoRow label="Tên" value={order.buyer.full_name} />
+            <InfoRow label="Name" value={order.buyer.full_name} />
             <InfoRow label="Email" value={order.buyer.email} />
-            {order.buyer.phone && <InfoRow label="SĐT" value={order.buyer.phone} />}
+            {order.buyer.phone && <InfoRow label="Phone" value={order.buyer.phone} />}
           </View>
         )}
 
@@ -370,11 +370,11 @@ const OrderDetail = ({ route, navigation }) => {
           <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <MaterialCommunityIcons name="store-outline" size={20} color="#389cfa" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Thông tin người bán</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Seller Information</Text>
             </View>
-            <InfoRow label="Tên" value={order.listing.seller.full_name} />
+            <InfoRow label="Name" value={order.listing.seller.full_name} />
             <InfoRow label="Email" value={order.listing.seller.email} />
-            {order.listing.seller.phone && <InfoRow label="SĐT" value={order.listing.seller.phone} />}
+            {order.listing.seller.phone && <InfoRow label="Phone" value={order.listing.seller.phone} />}
           </View>
         )}
 
@@ -383,7 +383,7 @@ const OrderDetail = ({ route, navigation }) => {
           <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <MaterialCommunityIcons name="note-text-outline" size={20} color="#389cfa" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Ghi chú</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Note</Text>
             </View>
             <Text style={{ fontSize: 14, color: '#6b7280', fontStyle: 'italic' }}>
               {order.note}
@@ -415,12 +415,12 @@ const OrderDetail = ({ route, navigation }) => {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="credit-card-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Thanh toán</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Now</Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Thanh toán qua PayOS
+                Pay via PayOS
               </Text>
             </View>
           )}
@@ -447,12 +447,12 @@ const OrderDetail = ({ route, navigation }) => {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="check-circle-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Xác nhận đơn hàng</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Confirm Order</Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Xác nhận đơn hàng COD thủ công
+                Manually confirm COD order
               </Text>
             </View>
           )}
@@ -479,12 +479,12 @@ const OrderDetail = ({ route, navigation }) => {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="check-decagram" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Đã nhận hàng</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Received</Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Xác nhận đã nhận hàng và hoàn thành đơn
+                Confirm receipt and complete order
               </Text>
             </View>
           )}
@@ -508,7 +508,7 @@ const OrderDetail = ({ route, navigation }) => {
               })}
             >
               <MaterialCommunityIcons name="close-circle-outline" size={20} color="#ef4444" />
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#ef4444' }}>Hủy đơn hàng</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#ef4444' }}>Cancel Order</Text>
             </Pressable>
           )}
 
@@ -537,7 +537,7 @@ const OrderDetail = ({ route, navigation }) => {
             >
               <MaterialCommunityIcons name="chat-outline" size={20} color="#389cfa" />
               <Text style={{ fontSize: 14, fontWeight: '600', color: '#389cfa' }}>
-                Liên hệ {isBuyer ? 'người bán' : 'người mua'}
+                Contact {isBuyer ? 'Seller' : 'Buyer'}
               </Text>
             </Pressable>
           )}

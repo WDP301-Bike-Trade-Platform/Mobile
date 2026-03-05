@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -306,6 +307,7 @@ const Home = () => {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top"]}>
     <View style={{ flex: 1, backgroundColor: "#f5f7f8" }}>
       {/* Header */}
       <View
@@ -523,6 +525,7 @@ const Home = () => {
         />
       </View>
     </View>
+    </SafeAreaView>
   );
 };
 

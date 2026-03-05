@@ -24,16 +24,16 @@ import {
 import { formatPrice } from "../utils/formatters";
 
 const STATUS_TABS = [
-  { key: "", label: "Tất cả" },
-  { key: "SHOW", label: "Đang hiện" },
-  { key: "HIDE", label: "Đã ẩn" },
-  { key: "SOLD", label: "Đã bán" },
+  { key: "", label: "All" },
+  { key: "SHOW", label: "Visible" },
+  { key: "HIDE", label: "Hidden" },
+  { key: "SOLD", label: "Sold" },
 ];
 
 const STATUS_LABEL = {
-  SHOW: "Đang hiện",
-  HIDE: "Đã ẩn", 
-  SOLD: "Đã bán",
+  SHOW: "Visible",
+  HIDE: "Hidden", 
+  SOLD: "Sold",
 };
 
 const STATUS_COLORS = {
@@ -63,7 +63,7 @@ const MyPost = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    return new Date(dateString).toLocaleDateString("vi-VN");
+    return new Date(dateString).toLocaleDateString("en-US");
   };
 
   const getErrorMessage = (error) => {
@@ -71,7 +71,7 @@ const MyPost = () => {
       error?.response?.data?.message ||
       error?.response?.data ||
       error?.message ||
-      "Thao tác thất bại";
+      "Operation failed";
     if (typeof raw !== "string") return JSON.stringify(raw);
     return raw;
   };
@@ -79,10 +79,10 @@ const MyPost = () => {
   const getPublishErrorMessage = (error) => {
     const raw = getErrorMessage(error);
     if (raw.includes("Images did not pass quality checks")) {
-      return "Hình ảnh không đạt yêu cầu chất lượng";
+      return "Images did not pass quality checks";
     }
     if (raw.includes("Price must be greater than 0")) {
-      return "Giá sản phẩm phải lớn hơn 0";
+      return "Price must be greater than 0";
     }
     return raw;
   };
@@ -100,8 +100,8 @@ const MyPost = () => {
         const transformedData = data.map(item => ({
           id: item.listing_id,
           listingId: item.listing_id,
-          title: `${item.vehicle?.brand} ${item.vehicle?.model}` || 'Không có tên',
-          name: `${item.vehicle?.brand} ${item.vehicle?.model}` || 'Không có tên',
+          title: `${item.vehicle?.brand} ${item.vehicle?.model}` || 'Untitled',
+          name: `${item.vehicle?.brand} ${item.vehicle?.model}` || 'Untitled',
           price: item.vehicle?.price?.d?.[0] || 0,
           status: item.status,
           createdAt: item.created_at,
@@ -121,7 +121,7 @@ const MyPost = () => {
         }
       } catch (err) {
         console.error("Error fetching listings:", err);
-        Alert.alert("Lỗi", "Không thể tải danh sách sản phẩm");
+        Alert.alert("Error", "Unable to load listings");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -156,10 +156,10 @@ const MyPost = () => {
     setActionLoading(id);
     try {
       await publishListing(id);
-      Alert.alert("Thành công", "Đã hiển thị bài đăng");
+      Alert.alert("Success", "Listing published");
       fetchListings(activeTab, 0);
     } catch (err) {
-      Alert.alert("Lỗi", getPublishErrorMessage(err));
+      Alert.alert("Error", getPublishErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -169,10 +169,10 @@ const MyPost = () => {
     setActionLoading(id);
     try {
       await archiveListing(id);
-      Alert.alert("Thành công", "Đã ẩn bài đăng");
+      Alert.alert("Success", "Listing hidden");
       fetchListings(activeTab, 0);
     } catch (err) {
-      Alert.alert("Lỗi", getErrorMessage(err));
+      Alert.alert("Error", getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -182,29 +182,29 @@ const MyPost = () => {
     setActionLoading(id);
     try {
       await markAsSold(id);
-      Alert.alert("Thành công", "Đã đánh dấu sản phẩm đã bán");
+      Alert.alert("Success", "Marked as sold");
       fetchListings(activeTab, 0);
     } catch (err) {
-      Alert.alert("Lỗi", getErrorMessage(err));
+      Alert.alert("Error", getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleDelete = async (id) => {
-    Alert.alert("Xác nhận", "Bạn chắc muốn xóa bài đăng này?", [
-      { text: "Hủy", style: "cancel" },
+    Alert.alert("Confirm", "Are you sure you want to delete this listing?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Xóa",
+        text: "Delete",
         style: "destructive",
         onPress: async () => {
           setActionLoading(id);
           try {
             await deleteListing(id);
-            Alert.alert("Thành công", "Đã xóa bài đăng");
+            Alert.alert("Success", "Listing deleted");
             fetchListings(activeTab, 0);
           } catch (err) {
-            Alert.alert("Lỗi", getErrorMessage(err));
+            Alert.alert("Error", getErrorMessage(err));
           } finally {
             setActionLoading(null);
           }
@@ -286,7 +286,7 @@ const MyPost = () => {
             ) : (
               <>
                 <MaterialCommunityIcons name="eye" size={14} color="#059669" />
-                <Text style={[styles.actionButtonText, { color: "#059669" }]}>Hiện</Text>
+                <Text style={[styles.actionButtonText, { color: "#059669" }]}>Show</Text>
               </>
             )}
           </Pressable>
@@ -303,7 +303,7 @@ const MyPost = () => {
             ) : (
               <>
                 <MaterialCommunityIcons name="eye-off" size={14} color="#4b5563" />
-                <Text style={styles.actionButtonText}>Ẩn</Text>
+                <Text style={styles.actionButtonText}>Hide</Text>
               </>
             )}
           </Pressable>
@@ -320,7 +320,7 @@ const MyPost = () => {
             ) : (
               <>
                 <MaterialCommunityIcons name="check-circle" size={14} color="#d97706" />
-                <Text style={[styles.actionButtonText, { color: "#d97706" }]}>Đã bán</Text>
+                <Text style={[styles.actionButtonText, { color: "#d97706" }]}>Sold</Text>
               </>
             )}
           </Pressable>
@@ -335,7 +335,7 @@ const MyPost = () => {
           disabled={isLoading}
         >
           <MaterialCommunityIcons name="pencil" size={14} color="#3b82f6" />
-          <Text style={[styles.actionButtonText, { color: "#3b82f6" }]}>Sửa</Text>
+          <Text style={[styles.actionButtonText, { color: "#3b82f6" }]}>Edit</Text>
         </Pressable>
 
         <Pressable
@@ -357,7 +357,7 @@ const MyPost = () => {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Đang tải...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </SafeAreaView>
     );
   }
@@ -371,7 +371,7 @@ const MyPost = () => {
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#1a1a1a" />
         </Pressable>
-        <Text style={styles.headerTitle}>Bài đăng của tôi</Text>
+        <Text style={styles.headerTitle}>My Listings</Text>
         <View style={styles.headerActions}>
           <Pressable style={styles.headerIconBtn}>
             <MaterialCommunityIcons name="magnify" size={24} color="#6b7280" />
@@ -421,15 +421,15 @@ const MyPost = () => {
           <View style={styles.emptyIcon}>
             <MaterialCommunityIcons name="store-outline" size={48} color="#9ca3af" />
           </View>
-          <Text style={styles.emptyTitle}>Chưa có bài đăng nào</Text>
+          <Text style={styles.emptyTitle}>No listings yet</Text>
           <Text style={styles.emptyDescription}>
-            Bắt đầu bán hàng bằng cách tạo bài đăng đầu tiên
+            Start selling by creating your first listing
           </Text>
           <Pressable
             style={styles.emptyButton}
             onPress={() => navigation.navigate("CreateProduct")}
           >
-            <Text style={styles.emptyButtonText}>Đăng tin ngay</Text>
+            <Text style={styles.emptyButtonText}>Create Listing</Text>
           </Pressable>
         </View>
       ) : (
@@ -464,7 +464,7 @@ const MyPost = () => {
               style={styles.loadMoreBtn}
               onPress={handleLoadMore}
             >
-              <Text style={styles.loadMoreBtnText}>Xem thêm</Text>
+              <Text style={styles.loadMoreBtnText}>Load More</Text>
             </Pressable>
           )}
         </ScrollView>

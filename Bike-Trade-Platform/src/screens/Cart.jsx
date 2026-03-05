@@ -43,10 +43,10 @@ const Cart = ({ navigation }) => {
   };
 
   const handleRemoveItem = (cartItemId) => {
-    Alert.alert('Xóa sản phẩm', 'Bạn có chắc muốn xóa sản phẩm này?', [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert('Remove Item', 'Are you sure you want to remove this item?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Xóa',
+        text: 'Remove',
         style: 'destructive',
         onPress: () => removeItem(cartItemId),
       },
@@ -54,10 +54,10 @@ const Cart = ({ navigation }) => {
   };
 
   const handleClearCart = () => {
-    Alert.alert('Xóa giỏ hàng', 'Bạn có chắc muốn xóa toàn bộ giỏ hàng?', [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert('Clear Cart', 'Are you sure you want to clear your entire cart?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Xóa tất cả',
+        text: 'Clear All',
         style: 'destructive',
         onPress: () => clearCartItems(),
       },
@@ -66,7 +66,7 @@ const Cart = ({ navigation }) => {
 
   const handleCheckout = () => {
     if (!items || items.length === 0) {
-      Alert.alert('Thông báo', 'Giỏ hàng trống');
+      Alert.alert('Notice', 'Your cart is empty');
       return;
     }
     navigation.navigate('Checkout', { cartItems: items, totalAmount });
@@ -82,7 +82,7 @@ const Cart = ({ navigation }) => {
     // Backend CartItemView: item.listing.vehicle.brand, .model
     const vehicle = item.listing?.vehicle;
     if (vehicle?.brand && vehicle?.model) return `${vehicle.brand} ${vehicle.model}`;
-    return vehicle?.title || vehicle?.name || 'Sản phẩm';
+    return vehicle?.title || vehicle?.name || 'Product';
   };
 
   const getSellerName = (item) => {
@@ -122,7 +122,7 @@ const Cart = ({ navigation }) => {
           </Text>
 
           {sellerName && (
-            <Text style={styles.sellerName}>Bán bởi: {sellerName}</Text>
+            <Text style={styles.sellerName}>Sold by: {sellerName}</Text>
           )}
 
           <Text style={styles.itemPrice}>{formatPrice(price)}</Text>
@@ -148,7 +148,7 @@ const Cart = ({ navigation }) => {
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#359EFF" />
-          <Text style={styles.loadingText}>Đang tải giỏ hàng...</Text>
+          <Text style={styles.loadingText}>Loading cart...</Text>
         </View>
       </SafeAreaView>
     );
@@ -163,7 +163,7 @@ const Cart = ({ navigation }) => {
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#111" />
         </Pressable>
-        <Text style={styles.headerTitle}>Giỏ hàng ({itemCount})</Text>
+        <Text style={styles.headerTitle}>Cart ({itemCount})</Text>
         {items?.length > 0 ? (
           <Pressable style={styles.clearButton} onPress={handleClearCart}>
             <MaterialCommunityIcons name="delete-sweep" size={24} color="#ef4444" />
@@ -178,9 +178,9 @@ const Cart = ({ navigation }) => {
           <View style={styles.emptyIcon}>
             <MaterialCommunityIcons name="cart-outline" size={64} color="#d1d5db" />
           </View>
-          <Text style={styles.emptyTitle}>Giỏ hàng trống</Text>
+          <Text style={styles.emptyTitle}>Your cart is empty</Text>
           <Text style={styles.emptySubtitle}>
-            Hãy khám phá và thêm sản phẩm yêu thích vào giỏ hàng
+            Explore and add your favorite items to the cart
           </Text>
         </View>
       ) : (
@@ -205,12 +205,12 @@ const Cart = ({ navigation }) => {
           <View style={styles.bottomContainer}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>
-                Tổng cộng ({itemCount} sản phẩm)
+                Total ({itemCount} items)
               </Text>
               <Text style={styles.summaryPrice}>{formatPrice(totalAmount)}</Text>
             </View>
             <Pressable style={styles.checkoutButton} onPress={handleCheckout}>
-              <Text style={styles.checkoutButtonText}>Thanh toán</Text>
+              <Text style={styles.checkoutButtonText}>Checkout</Text>
               <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
             </Pressable>
           </View>

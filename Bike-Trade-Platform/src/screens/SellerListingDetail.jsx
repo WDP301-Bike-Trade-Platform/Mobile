@@ -24,15 +24,15 @@ import { formatPrice } from "../utils/formatters";
 const { width } = Dimensions.get("window");
 
 const STATUS_MAP = {
-  DRAFT: { label: "Nháp", color: "#6b7280", bgColor: "#f3f4f6" },
-  PENDING_APPROVAL: { label: "Chờ duyệt", color: "#d97706", bgColor: "#fef3c7" },
-  APPROVED: { label: "Đã duyệt", color: "#16a34a", bgColor: "#dcfce7" },
-  RESERVED: { label: "Đã đặt cọc", color: "#ea580c", bgColor: "#ffedd5" },
-  SOLD: { label: "Đã bán", color: "#0891b2", bgColor: "#cffafe" },
-  REJECTED: { label: "Bị từ chối", color: "#dc2626", bgColor: "#fee2e2" },
-  ARCHIVED: { label: "Đã ẩn", color: "#4b5563", bgColor: "#e5e7eb" },
-  FLAGGED: { label: "Bị báo cáo", color: "#dc2626", bgColor: "#fee2e2" },
-  DELETED: { label: "Đã xóa", color: "#dc2626", bgColor: "#fee2e2" },
+  DRAFT: { label: "Draft", color: "#6b7280", bgColor: "#f3f4f6" },
+  PENDING_APPROVAL: { label: "Pending Approval", color: "#d97706", bgColor: "#fef3c7" },
+  APPROVED: { label: "Approved", color: "#16a34a", bgColor: "#dcfce7" },
+  RESERVED: { label: "Reserved", color: "#ea580c", bgColor: "#ffedd5" },
+  SOLD: { label: "Sold", color: "#0891b2", bgColor: "#cffafe" },
+  REJECTED: { label: "Rejected", color: "#dc2626", bgColor: "#fee2e2" },
+  ARCHIVED: { label: "Archived", color: "#4b5563", bgColor: "#e5e7eb" },
+  FLAGGED: { label: "Flagged", color: "#dc2626", bgColor: "#fee2e2" },
+  DELETED: { label: "Deleted", color: "#dc2626", bgColor: "#fee2e2" },
 };
 
 const SellerListingDetail = () => {
@@ -55,7 +55,7 @@ const SellerListingDetail = () => {
       setListing(response.data || response);
     } catch (error) {
       console.error("Error fetching listing detail:", error);
-      Alert.alert("Lỗi", "Không thể tải chi tiết sản phẩm");
+      Alert.alert("Error", "Unable to load product details");
     } finally {
       setLoading(false);
     }
@@ -73,11 +73,11 @@ const SellerListingDetail = () => {
     setActionLoading(true);
     try {
       await publishListing(listing.id);
-      Alert.alert("Thành công", "Đã gửi bài đăng để duyệt");
+      Alert.alert("Success", "Listing submitted for approval");
       fetchListingDetail();
     } catch (error) {
       console.error("Error publishing listing:", error);
-      Alert.alert("Lỗi", "Không thể xuất bản bài đăng");
+      Alert.alert("Error", "Unable to publish listing");
     } finally {
       setActionLoading(false);
     }
@@ -89,11 +89,11 @@ const SellerListingDetail = () => {
     setActionLoading(true);
     try {
       await archiveListing(listing.id);
-      Alert.alert("Thành công", "Đã ẩn bài đăng");
+      Alert.alert("Success", "Listing archived");
       fetchListingDetail();
     } catch (error) {
       console.error("Error archiving listing:", error);
-      Alert.alert("Lỗi", "Không thể ẩn bài đăng");
+      Alert.alert("Error", "Unable to archive listing");
     } finally {
       setActionLoading(false);
     }
@@ -103,23 +103,23 @@ const SellerListingDetail = () => {
     if (!listing?.id) return;
     
     Alert.alert(
-      "Xác nhận xóa",
-      "Bạn có chắc chắn muốn xóa bài đăng này? Hành động này không thể hoàn tác.",
+      "Confirm Delete",
+      "Are you sure you want to delete this listing? This action cannot be undone.",
       [
-        { text: "Hủy", style: "cancel" },
+        { text: "Cancel", style: "cancel" },
         {
-          text: "Xóa",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             setActionLoading(true);
             try {
               await deleteListing(listing.id);
-              Alert.alert("Thành công", "Đã xóa bài đăng", [
+              Alert.alert("Success", "Listing deleted", [
                 { text: "OK", onPress: () => navigation.goBack() },
               ]);
             } catch (error) {
               console.error("Error deleting listing:", error);
-              Alert.alert("Lỗi", "Không thể xóa bài đăng");
+              Alert.alert("Error", "Unable to delete listing");
             } finally {
               setActionLoading(false);
             }
@@ -131,14 +131,14 @@ const SellerListingDetail = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    return new Date(dateString).toLocaleDateString("vi-VN");
+    return new Date(dateString).toLocaleDateString("en-US");
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color="#359EFF" />
-        <Text style={{ marginTop: 16, color: "#6b7280" }}>Đang tải...</Text>
+        <Text style={{ marginTop: 16, color: "#6b7280" }}>Loading...</Text>
       </SafeAreaView>
     );
   }
@@ -148,7 +148,7 @@ const SellerListingDetail = () => {
       <SafeAreaView style={styles.centered}>
         <MaterialCommunityIcons name="alert-circle-outline" size={64} color="#dc2626" />
         <Text style={{ marginTop: 16, fontSize: 16, color: "#374151" }}>
-          Không tìm thấy sản phẩm
+          Product not found
         </Text>
         <Pressable
           style={{
@@ -160,7 +160,7 @@ const SellerListingDetail = () => {
           }}
           onPress={() => navigation.goBack()}
         >
-          <Text style={{ color: "#fff", fontWeight: "600" }}>Quay lại</Text>
+          <Text style={{ color: "#fff", fontWeight: "600" }}>Go Back</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -181,7 +181,7 @@ const SellerListingDetail = () => {
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
         </Pressable>
-        <Text style={styles.headerTitle}>Chi tiết sản phẩm</Text>
+        <Text style={styles.headerTitle}>Product Details</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -202,7 +202,7 @@ const SellerListingDetail = () => {
             </View>
           </View>
           <Text style={styles.dateText}>
-            Tạo ngày: {formatDate(listing.createdAt)}
+            Created: {formatDate(listing.createdAt)}
           </Text>
 
           {/* Action Buttons */}
@@ -214,7 +214,7 @@ const SellerListingDetail = () => {
                 disabled={actionLoading}
               >
                 <MaterialCommunityIcons name="send" size={16} color="#fff" />
-                <Text style={styles.btnPrimaryText}>Xuất bản</Text>
+                <Text style={styles.btnPrimaryText}>Publish</Text>
               </Pressable>
             )}
             
@@ -225,7 +225,7 @@ const SellerListingDetail = () => {
                 disabled={actionLoading}
               >
                 <MaterialCommunityIcons name="archive" size={16} color="#359EFF" />
-                <Text style={styles.btnOutlineText}>Ẩn tin</Text>
+                <Text style={styles.btnOutlineText}>Archive</Text>
               </Pressable>
             )}
             
@@ -236,7 +236,7 @@ const SellerListingDetail = () => {
                 disabled={actionLoading}
               >
                 <MaterialCommunityIcons name="send" size={16} color="#fff" />
-                <Text style={styles.btnPrimaryText}>Xuất bản lại</Text>
+                <Text style={styles.btnPrimaryText}>Republish</Text>
               </Pressable>
             )}
 
@@ -249,7 +249,7 @@ const SellerListingDetail = () => {
               disabled={actionLoading}
             >
               <MaterialCommunityIcons name="pencil" size={16} color="#359EFF" />
-              <Text style={styles.btnOutlineText}>Chỉnh sửa</Text>
+              <Text style={styles.btnOutlineText}>Edit</Text>
             </Pressable>
 
             <Pressable
@@ -258,7 +258,7 @@ const SellerListingDetail = () => {
               disabled={actionLoading}
             >
               <MaterialCommunityIcons name="delete" size={16} color="#dc2626" />
-              <Text style={styles.btnDangerText}>Xóa</Text>
+              <Text style={styles.btnDangerText}>Delete</Text>
             </Pressable>
           </View>
         </View>
@@ -282,7 +282,7 @@ const SellerListingDetail = () => {
                   <Image source={{ uri: image.url || image }} style={styles.image} />
                   {index === 0 && (
                     <View style={styles.primaryBadge}>
-                      <Text style={styles.primaryBadgeText}>Chính</Text>
+                      <Text style={styles.primaryBadgeText}>Primary</Text>
                     </View>
                   )}
                 </View>
@@ -312,42 +312,42 @@ const SellerListingDetail = () => {
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Mô tả</Text>
+          <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>
-            {listing.description || "Không có mô tả"}
+            {listing.description || "No description"}
           </Text>
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Thông số kỹ thuật</Text>
+          <Text style={styles.sectionTitle}>Specifications</Text>
           <View style={styles.attributesGrid}>
             {listing.brand && (
               <View style={styles.attrRow}>
-                <Text style={styles.attrLabel}>Thương hiệu:</Text>
+                <Text style={styles.attrLabel}>Brand:</Text>
                 <Text style={styles.attrValue}>{listing.brand}</Text>
               </View>
             )}
             {listing.model && (
               <View style={styles.attrRow}>
-                <Text style={styles.attrLabel}>Mẫu xe:</Text>
+                <Text style={styles.attrLabel}>Model:</Text>
                 <Text style={styles.attrValue}>{listing.model}</Text>
               </View>
             )}
             {listing.year && (
               <View style={styles.attrRow}>
-                <Text style={styles.attrLabel}>Năm sản xuất:</Text>
+                <Text style={styles.attrLabel}>Year:</Text>
                 <Text style={styles.attrValue}>{listing.year}</Text>
               </View>
             )}
             {listing.condition && (
               <View style={styles.attrRow}>
-                <Text style={styles.attrLabel}>Tình trạng:</Text>
+                <Text style={styles.attrLabel}>Condition:</Text>
                 <Text style={styles.attrValue}>{listing.condition}</Text>
               </View>
             )}
             {listing.category && (
               <View style={styles.attrRow}>
-                <Text style={styles.attrLabel}>Danh mục:</Text>
+                <Text style={styles.attrLabel}>Category:</Text>
                 <Text style={styles.attrValue}>{listing.category}</Text>
               </View>
             )}
@@ -356,7 +356,7 @@ const SellerListingDetail = () => {
           {listing.location && (
             <>
               <View style={styles.divider} />
-              <Text style={styles.sectionTitle}>Địa điểm</Text>
+              <Text style={styles.sectionTitle}>Location</Text>
               <View style={styles.locationRow}>
                 <MaterialCommunityIcons name="map-marker" size={20} color="#6b7280" />
                 <Text style={styles.locationText}>{listing.location}</Text>

@@ -89,19 +89,19 @@ const Checkout = ({ route, navigation }) => {
             if (paymentData.paymentLink) {
               await Linking.openURL(paymentData.paymentLink);
               Alert.alert(
-                'Đặt hàng thành công',
-                'Vui lòng hoàn tất thanh toán trên trình duyệt',
+                'Order Placed',
+                'Please complete the payment in your browser',
                 [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
               );
             } else {
-              Alert.alert('Thành công', 'Đã tạo đơn hàng', [
+              Alert.alert('Success', 'Order created', [
                 { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
               ]);
             }
           } else {
             Alert.alert(
-              'Thành công',
-              `Đã tạo ${orders.length} đơn hàng`,
+              'Success',
+              `${orders.length} orders created successfully`,
               [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
             );
           }
@@ -126,17 +126,17 @@ const Checkout = ({ route, navigation }) => {
           if (paymentData.paymentLink) {
             await Linking.openURL(paymentData.paymentLink);
             Alert.alert(
-              'Đặt hàng thành công',
-              'Vui lòng hoàn tất thanh toán trên trình duyệt',
+              'Order Placed',
+              'Please complete the payment in your browser',
               [{ text: 'OK', onPress: () => navigation.navigate('MyOrders') }]
             );
           } else {
-            Alert.alert('Thành công', 'Đã tạo đơn hàng', [
+            Alert.alert('Success', 'Order created', [
               { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
             ]);
           }
         } else {
-          Alert.alert('Thành công', 'Đã tạo đơn hàng COD', [
+          Alert.alert('Success', 'COD order created', [
             { text: 'OK', onPress: () => navigation.navigate('MyOrders') },
           ]);
         }
@@ -144,8 +144,8 @@ const Checkout = ({ route, navigation }) => {
     } catch (error) {
       console.error('Error during checkout:', error);
       const errMsg = error.response?.data?.message;
-      const message = Array.isArray(errMsg) ? errMsg.join('\n') : (errMsg || 'Không thể hoàn tất đặt hàng');
-      Alert.alert('Lỗi', message);
+      const message = Array.isArray(errMsg) ? errMsg.join('\n') : (errMsg || 'Unable to complete the order');
+      Alert.alert('Error', message);
     } finally {
       setLoading(false);
     }
@@ -250,11 +250,11 @@ const Checkout = ({ route, navigation }) => {
         {/* Payment Method */}
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
-            Phương thức thanh toán
+            Payment Method
           </Text>
           {[
-            { key: 'PAYOS', label: 'PayOS', desc: 'Thanh toán online qua chuyển khoản', icon: 'credit-card-outline' },
-            { key: 'COD', label: 'COD', desc: 'Thanh toán khi nhận hàng', icon: 'cash' },
+            { key: 'PAYOS', label: 'PayOS', desc: 'Online payment via bank transfer', icon: 'credit-card-outline' },
+            { key: 'COD', label: 'COD', desc: 'Cash on delivery', icon: 'cash' },
           ].map((method) => (
             <Pressable
               key={method.key}
