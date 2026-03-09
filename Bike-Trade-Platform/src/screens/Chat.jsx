@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   Text,
   View,
@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { getChat } from "../services/api.chat";
 import { formatTimeAgo } from "../utils/dateUtils";
+import { useChatSocket } from "../hooks/useChatSocket";
 
 const Chat = () => {
   const navigation = useNavigation();
@@ -22,26 +23,50 @@ const Chat = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchChats = async () => {
+  // Keep conversations in a ref so the socket callback can access latest state
+  const conversationsRef = useRef([]);
+
+  const fetchChats = useCallback(async () => {
     try {
       const res = await getChat();
-      setConversations(res.data || []);
+      const threads = res.data || [];
+      setConversations(threads);
+      conversationsRef.current = threads;
     } catch (error) {
       console.log("Error fetching chats:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  // When a new message arrives on any chat room, update the lastMessage in the list
+  const handleNewMessage = useCallback((message) => {
+    setConversations((prev) => {
+      const updated = prev.map((conv) => {
+        if (conv.chatId === message.chatId) {
+          return {
+            ...conv,
+            lastMessage: message.content || message.imageUrl || conv.lastMessage,
+            lastMessageAt: message.sentAt,
+          };
+        }
+        return conv;
+      });
+      // Sort by latest message
+      return [...updated].sort(
+        (a, b) =>
+          new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)
+      );
+    });
+  }, []);
+
+  useChatSocket({ onNewMessage: handleNewMessage });
 
   useFocusEffect(
     useCallback(() => {
       fetchChats();
-      const interval = setInterval(() => {
-        fetchChats();
-      }, 3000);
-      return () => clearInterval(interval);
-    }, [])
+    }, [fetchChats])
   );
 
   const onRefresh = () => {
