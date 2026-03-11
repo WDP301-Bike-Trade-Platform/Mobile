@@ -348,6 +348,12 @@ const Profile = () => {
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
           <MenuItem
+            icon="shield-search"
+            label="My Inspections"
+            onPress={() => navigation.navigate("MyInspections")}
+          />
+          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
+          <MenuItem
             icon="truck"
             label="Seller Orders"
             onPress={() => navigation.navigate("SellerOrders")}
