@@ -18,6 +18,7 @@ import { TextInput } from "react-native-gesture-handler";
 import { getProducts, getCategories } from "../services/api.products";
 import { addToCart as addToCartApi } from "../services/api.cart";
 import { fetchNotifications } from "../services/api.notifications";
+import { checkProfileComplete } from "../utils/profileCheck";
 
 const Home = () => {
   const navigation = useNavigation();
@@ -354,7 +355,10 @@ const Home = () => {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             {isAuthenticated && (
               <Pressable
-                onPress={() => navigation.navigate("CreateProduct")}
+                onPress={async () => {
+                  const user = await checkProfileComplete(navigation);
+                  if (user) navigation.navigate("CreateProduct");
+                }}
                 style={{
                   width: 36,
                   height: 36,

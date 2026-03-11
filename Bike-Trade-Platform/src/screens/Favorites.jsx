@@ -1,29 +1,48 @@
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
   Pressable,
   Text,
   View,
-  ScrollView,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useAppContext } from "../provider/AppProvider";
-import { useNavigation } from "@react-navigation/native";
-import { useStorageContext } from "../provider/StorageProvider";
-import { useState } from "react";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import HeaderBar from "../component/HeaderBar";
+import {
+  getWishlist,
+  removeFromWishlist as apiRemoveFromWishlist,
+} from "../services/api.wishlist";
 
 const Favorites = () => {
   const navigation = useNavigation();
-  const {
-    addStorageData: addToFavorites,
-    removeStorageData: removeFromFavorites,
-    storageData: favorites,
-  } = useStorageContext();
 
+  const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const fetchWishlist = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getWishlist();
+      setFavorites(data.items || []);
+    } catch (error) {
+      console.error("Error fetching wishlist:", error);
+      Alert.alert("Error", "Failed to load wishlist");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Refresh wishlist every time screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchWishlist();
+    }, [fetchWishlist])
+  );
 
   const filteredListings =
     statusFilter === "all"
@@ -43,30 +62,37 @@ const Favorites = () => {
     }
   };
 
-  const handleDelete = (bikeId) => {
+  const handleRemove = (listingId) => {
     Alert.alert(
-      "Delete Listing",
-      "Are you sure you want to delete this listing?",
+      "Remove from Favorites",
+      "Are you sure you want to remove this item from your favorites?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: "Remove",
           style: "destructive",
-          onPress: () => {
-            removeFromFavorites(bikeId);
+          onPress: async () => {
+            try {
+              await apiRemoveFromWishlist(listingId);
+              setFavorites((prev) =>
+                prev.filter((item) => item.listing_id !== listingId)
+              );
+            } catch (error) {
+              console.error("Error removing from wishlist:", error);
+              Alert.alert("Error", "Failed to remove from wishlist");
+            }
           },
         },
       ]
     );
   };
   const ListingCard = ({ bike }) => {
-    // Handle both old and new data formats
-    const listingId = bike.listing_id || bike.id;
-    const vehicleData = bike.vehicle || bike;
+    const listingId = bike.listing_id;
+    const vehicleData = bike.vehicle || {};
     const mediaData = bike.media || [];
-    const firstImage = mediaData.length > 0 
-      ? mediaData[0].file_url 
-      : (bike.image || "https://random-image-pepebigotes.vercel.app/api/random-image");
+    const firstImage = mediaData.length > 0
+      ? mediaData[0].file_url
+      : "https://via.placeholder.com/80";
     const sellerInfo = bike.seller || {};
     const price = vehicleData.price?.d ? vehicleData.price.d[0] : vehicleData.price;
 
@@ -217,9 +243,8 @@ const Favorites = () => {
               gap: 8,
             }}
           >
-            
             <Pressable
-              onPress={() => removeFromFavorites(listingId)}
+              onPress={() => handleRemove(listingId)}
               style={{
                 width: 36,
                 height: 36,
@@ -229,24 +254,7 @@ const Favorites = () => {
               }}
             >
               <MaterialCommunityIcons
-                name="heart"
-                size={20}
-                color="#FF4444"
-              />
-            </Pressable>
-
-            <Pressable
-              onPress={() => handleDelete(listingId)}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <MaterialCommunityIcons
-                name="delete"
+                name="heart-off"
                 size={20}
                 color="#FF4444"
               />
@@ -348,90 +356,79 @@ const Favorites = () => {
       </SafeAreaView>
 
       {/* Listings List */}
-      <FlatList
-        data={filteredListings}
-        keyExtractor={(item) => (item.listing_id || item.id || Math.random().toString()).toString()}
-        renderItem={({ item }) => <ListingCard bike={item} />}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 120,
-        }}
-        scrollIndicatorInsets={{ right: 1 }}
-        ListEmptyComponent={
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              paddingVertical: 60,
-            }}
-          >
+      {loading ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingVertical: 60,
+          }}
+        >
+          <ActivityIndicator size="large" color="#359EFF" />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredListings}
+          keyExtractor={(item) => item.listing_id || item.wishlist_item_id}
+          renderItem={({ item }) => <ListingCard bike={item} />}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: 120,
+          }}
+          scrollIndicatorInsets={{ right: 1 }}
+          ListEmptyComponent={
             <View
               style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: "#f0f0f0",
+                flex: 1,
                 justifyContent: "center",
                 alignItems: "center",
-                marginBottom: 16,
+                paddingVertical: 60,
               }}
             >
-              <MaterialCommunityIcons
-                name="bike"
-                size={40}
-                color="#ccc"
-              />
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: "#f0f0f0",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="heart-outline"
+                  size={40}
+                  color="#ccc"
+                />
+              </View>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "bold",
+                  color: "#111",
+                  marginBottom: 8,
+                }}
+              >
+                No favorites yet
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: "#999",
+                  textAlign: "center",
+                  maxWidth: 200,
+                }}
+              >
+                Browse listings and tap the heart icon to add to your favorites.
+              </Text>
             </View>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "bold",
-                color: "#111",
-                marginBottom: 8,
-              }}
-            >
-              No listings yet
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: "#999",
-                textAlign: "center",
-                maxWidth: 200,
-              }}
-            >
-              Tap the + button to start selling your bike today.
-            </Text>
-          </View>
-        }
-      />
-
-      {/* Floating Action Button */}
-      <Pressable
-        style={{
-          position: "absolute",
-          bottom: 24,
-          right: 24,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          backgroundColor: "#359EFF",
-          justifyContent: "center",
-          alignItems: "center",
-          shadowColor: "#359EFF",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 5,
-        }}
-        onPress={() => {
-          Alert.alert("Add Listing", "Bike listing creation feature coming soon!");
-        }}
-      >
-        <MaterialCommunityIcons name="plus" size={32} color="#111" />
-      </Pressable>
+          }
+        />
+      )
+    }
     </View>
   );
 };
