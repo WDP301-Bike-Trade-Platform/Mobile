@@ -19,6 +19,7 @@ import { getCategories } from "../services/api.category";
 import { createProduct } from "../services/api.products";
 import { updateListing } from "../services/api.sellerListings";
 import { decimalToNumber } from "../utils/formatters";
+import { checkProfileComplete } from "../utils/profileCheck";
 import Dropdown from "../component/DropDown";
 
 // Separate InputField component to prevent re-renders
@@ -97,6 +98,12 @@ const CreateProduct = () => {
 
   // Request camera roll permissions and fetch categories
   useEffect(() => {
+    // Check profile before allowing to create
+    if (!isEdit) {
+      checkProfileComplete(navigation).then((user) => {
+        if (!user) navigation.goBack();
+      });
+    }
     requestMediaPermissions();
     fetchCategories();
     
