@@ -22,6 +22,7 @@ import {
   deleteListing,
 } from "../services/api.sellerListings";
 import { formatPrice } from "../utils/formatters";
+import { checkProfileComplete } from "../utils/profileCheck";
 
 const STATUS_TABS = [
   { key: "", label: "All" },
@@ -427,7 +428,10 @@ const MyPost = () => {
           </Text>
           <Pressable
             style={styles.emptyButton}
-            onPress={() => navigation.navigate("CreateProduct")}
+            onPress={async () => {
+              const user = await checkProfileComplete(navigation);
+              if (user) navigation.navigate("CreateProduct");
+            }}
           >
             <Text style={styles.emptyButtonText}>Create Listing</Text>
           </Pressable>

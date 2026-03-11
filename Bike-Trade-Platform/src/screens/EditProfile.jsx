@@ -35,6 +35,7 @@ const EditProfile = () => {
   const [nationalId, setNationalId] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [bankName, setBankName] = useState("");
+  const [bankBin, setBankBin] = useState("");
 
   const [genderDropdownOpen, setGenderDropdownOpen] = useState(false);
   const [calendarVisible, setCalendarVisible] = useState(false);
@@ -99,6 +100,7 @@ const EditProfile = () => {
       setNationalId(userData?.profile?.national_id || "");
       setBankAccount(userData?.profile?.bank_account || "");
       setBankName(userData?.profile?.bank_name || "");
+      setBankBin(userData?.profile?.bank_bin || "");
       setAvatarUri(userData?.profile?.avatar_url || null);
     } catch (error) {
       console.log("Error loading profile:", error);
@@ -162,6 +164,7 @@ const EditProfile = () => {
         ...(nationalId && nationalId.trim() && { national_id: nationalId.trim() }),
         ...(bankAccount && bankAccount.trim() && { bank_account: bankAccount.trim() }),
         ...(bankName && bankName.trim() && { bank_name: bankName.trim() }),
+        ...(bankBin && bankBin.trim() && { bank_bin: bankBin.trim() }),
         ...(avatarUrl && { avatar_url: avatarUrl }),
       };
 
@@ -492,7 +495,7 @@ const EditProfile = () => {
           </View>
 
           {/* Bank Account */}
-          <View style={{ marginBottom: 24 }}>
+          <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827", marginBottom: 8 }}>
               Bank Account
             </Text>
@@ -510,6 +513,30 @@ const EditProfile = () => {
               placeholderTextColor="#9ca3af"
               value={bankAccount}
               onChangeText={setBankAccount}
+              editable={!submitting}
+            />
+          </View>
+
+          {/* Bank BIN */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827", marginBottom: 8 }}>
+              Bank BIN
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: "#e5e7eb",
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 14,
+                color: "#111827",
+              }}
+              placeholder="Enter bank BIN code (e.g. 970436)"
+              placeholderTextColor="#9ca3af"
+              value={bankBin}
+              onChangeText={setBankBin}
+              keyboardType="numeric"
               editable={!submitting}
             />
           </View>

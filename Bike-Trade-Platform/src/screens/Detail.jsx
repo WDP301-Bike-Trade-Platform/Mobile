@@ -1,4 +1,4 @@
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import {
   Text,
   Image,
@@ -7,12 +7,15 @@ import {
   Pressable,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useStorageContext } from "../provider/StorageProvider";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCart } from "../hooks/useCart";
+import { getProductById } from "../services/api.products";
+import { createInspectionRequest } from "../services/api.inspector";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -103,18 +106,80 @@ const BadgeTag = ({ icon, label, active }) => (
 const Detail = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const product = route.params?.product;
+  const routeProduct = route.params?.product;
+  const routeListingId = route.params?.listingId || routeProduct?.listing_id || routeProduct?.id;
   const { addProductToCart, items } = useCart();
 
+  const [product, setProduct] = useState(routeProduct || null);
+  const [loading, setLoading] = useState(!routeProduct);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isRequestingInspection, setIsRequestingInspection] = useState(false);
 
   const {
     addStorageData: addToFavorites,
     removeStorageData: removeFromFavorites,
     storageData: favorites,
   } = useStorageContext();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (routeListingId) {
+        fetchProduct();
+      }
+    }, [routeListingId])
+  );
+
+  const fetchProduct = async () => {
+    try {
+      if (!product) setLoading(true);
+      const data = await getProductById(routeListingId);
+      setProduct(data?.data || data);
+    } catch (error) {
+      console.log("Error fetching product:", error);
+      if (!product && !routeProduct) {
+        Alert.alert("Error", "Unable to load product details");
+        navigation.goBack();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestInspection = () => {
+    Alert.alert(
+      "Request Inspection",
+      "Do you want to request an inspection for this bike?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Submit Request",
+          onPress: async () => {
+            try {
+              setIsRequestingInspection(true);
+              await createInspectionRequest(listingId);
+              Alert.alert("Success", "Inspection request submitted successfully");
+              fetchProduct();
+            } catch (error) {
+              const msg = error?.response?.data?.message || "Unable to submit inspection request";
+              Alert.alert("Error", msg);
+            } finally {
+              setIsRequestingInspection(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f5f7f8" }}>
+        <ActivityIndicator size="large" color="#359EFF" />
+      </View>
+    );
+  }
 
   if (!product) {
     return (
@@ -132,11 +197,14 @@ const Detail = () => {
   const vehicleData = product.vehicle || product;
   const mediaData = product.media || [];
   const sellerData = product.seller || {};
+  const inspections = product.inspections || [];
   const price = parsePrice(vehicleData.price);
   const status = product.status || "APPROVED";
   const statusInfo = STATUS_CONFIG[status] || STATUS_CONFIG.APPROVED;
   const conditionInfo = CONDITION_CONFIG[vehicleData.condition] || { label: vehicleData.condition, color: "#6b7280" };
   const isSold = status === "SOLD";
+  const hasInspection = inspections.length > 0;
+  const latestInspection = hasInspection ? inspections[inspections.length - 1] : null;
 
   const images =
     mediaData.length > 0
@@ -253,6 +321,29 @@ const Detail = () => {
             }}
           >
             <MaterialCommunityIcons name="share-variant-outline" size={20} color="#222" />
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              navigation.navigate("Report", {
+                listingId,
+                listingTitle: `${vehicleData.brand} ${vehicleData.model}`,
+              })
+            }
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "rgba(255,255,255,0.92)",
+              justifyContent: "center",
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+          >
+            <MaterialCommunityIcons name="flag-outline" size={20} color="#222" />
           </Pressable>
         </View>
       </SafeAreaView>
@@ -626,6 +717,112 @@ const Detail = () => {
                   </View>
                 ))}
             </View>
+          </View>
+
+          {/* Inspection Section */}
+          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <Text style={{ fontSize: 17, fontWeight: "bold", color: "#111", marginBottom: 10 }}>Inspection</Text>
+            {hasInspection && (
+              <View
+                style={{
+                  backgroundColor: "#fff",
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: "#f0f0f0",
+                  overflow: "hidden",
+                  marginBottom: 10,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    backgroundColor:
+                      latestInspection.result_status === "PASSED"
+                        ? "#dcfce7"
+                        : latestInspection.result_status === "FAILED"
+                        ? "#fee2e2"
+                        : "#fef3c7",
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={
+                      latestInspection.result_status === "PASSED"
+                        ? "shield-check"
+                        : latestInspection.result_status === "FAILED"
+                        ? "shield-alert"
+                        : "shield-half-full"
+                    }
+                    size={20}
+                    color={
+                      latestInspection.result_status === "PASSED"
+                        ? "#16a34a"
+                        : latestInspection.result_status === "FAILED"
+                        ? "#dc2626"
+                        : "#d97706"
+                    }
+                  />
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "700",
+                      color:
+                        latestInspection.result_status === "PASSED"
+                          ? "#16a34a"
+                          : latestInspection.result_status === "FAILED"
+                          ? "#dc2626"
+                          : "#d97706",
+                    }}
+                  >
+                    {latestInspection.result_status === "PASSED"
+                      ? "Inspected - Passed"
+                      : latestInspection.result_status === "FAILED"
+                      ? "Inspected - Failed"
+                      : latestInspection.request_status === "CONFIRMED"
+                      ? "Inspection In Progress"
+                      : "Pending Inspection"}
+                  </Text>
+                </View>
+                {latestInspection.notes && (
+                  <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+                    <Text style={{ fontSize: 13, color: "#555", lineHeight: 20 }}>
+                      {latestInspection.notes}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+            {!isSold && (
+              <Pressable
+                onPress={handleRequestInspection}
+                disabled={isRequestingInspection}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  backgroundColor: pressed ? "#e0f2fe" : "#eff6ff",
+                  borderWidth: 1.5,
+                  borderColor: "#93c5fd",
+                  borderRadius: 14,
+                  paddingVertical: 14,
+                })}
+              >
+                {isRequestingInspection ? (
+                  <ActivityIndicator size="small" color="#2563eb" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="shield-search" size={20} color="#2563eb" />
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#2563eb" }}>
+                      Request Inspection
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            )}
           </View>
         </View>
       </ScrollView>
