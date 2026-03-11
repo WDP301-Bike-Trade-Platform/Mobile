@@ -25,6 +25,11 @@ import MyPost from "../screens/MyPost";
 import SellerListingDetail from "../screens/SellerListingDetail";
 import Notifications from "../screens/Notifications";
 import AddToCartExample from "../screens/AddToCartExample";
+import Report from "../screens/Report";
+import MyInspections from "../screens/MyInspections";
+import InspectorDashboard from "../screens/inspector/InspectorDashboard";
+import InspectionDetail from "../screens/inspector/InspectionDetail";
+import InspectorProfile from "../screens/inspector/InspectorProfile";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
@@ -177,8 +182,51 @@ const MainTabs = () => {
   );
 };
 
+// Inspector Tabs (role_id === 2)
+const InspectorTabs = () => {
+  return (
+    <Tabs.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === "InspectorDashboard") iconName = "clipboard-check-outline";
+          else if (route.name === "InspectorProfile") iconName = "account";
+          return (
+            <MaterialCommunityIcons name={iconName} size={size} color={color} />
+          );
+        },
+        tabBarActiveTintColor: "#359EFF",
+        tabBarInactiveTintColor: "#9ca3af",
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          borderTopWidth: 1,
+          borderTopColor: "#e5e7eb",
+          height: 64,
+          paddingBottom: 8,
+        },
+        tabBarHideOnKeyboard: true,
+        headerShown: false,
+      })}
+    >
+      <Tabs.Screen
+        name="InspectorDashboard"
+        component={InspectorDashboard}
+        options={{ title: "Kiểm định" }}
+      />
+      <Tabs.Screen
+        name="InspectorProfile"
+        component={InspectorProfile}
+        options={{ title: "Hồ sơ" }}
+      />
+    </Tabs.Navigator>
+  );
+};
+
 const RootNavigation = () => {
-  const { isAuthenticated, authLoading } = useAppContext();
+  const { isAuthenticated, authLoading, user } = useAppContext();
+
+  const isInspector = isAuthenticated && user?.role_id === 2;
 
   if (authLoading) {
     return (
@@ -199,8 +247,16 @@ const RootNavigation = () => {
             <Stack.Screen name="Login" component={Login} />
             <Stack.Screen name="Register" component={Register} />
           </>
+        ) : isInspector ? (
+          // Inspector (role_id === 2)
+          <>
+            <Stack.Screen name="InspectorApp" component={InspectorTabs} />
+            <Stack.Screen name="InspectionDetail" component={InspectionDetail} />
+            <Stack.Screen name="EditProfile" component={EditProfile} />
+            <Stack.Screen name="Notifications" component={Notifications} />
+          </>
         ) : (
-          // Authenticated
+          // User (role_id === 1)
           <>
             <Stack.Screen name="MainApp" component={MainTabs} />
             <Stack.Screen name="Detail" component={Detail} />
@@ -219,6 +275,8 @@ const RootNavigation = () => {
             <Stack.Screen name="SellerListingDetail" component={SellerListingDetail} />
             <Stack.Screen name="Notifications" component={Notifications} />
             <Stack.Screen name="AddToCartExample" component={AddToCartExample} />
+            <Stack.Screen name="Report" component={Report} />
+            <Stack.Screen name="MyInspections" component={MyInspections} />
             <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancel} />
           </>
