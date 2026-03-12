@@ -212,12 +212,12 @@ const InspectorTabs = () => {
       <Tabs.Screen
         name="InspectorDashboard"
         component={InspectorDashboard}
-        options={{ title: "Kiểm định" }}
+        options={{ title: "Inspection" }}
       />
       <Tabs.Screen
         name="InspectorProfile"
         component={InspectorProfile}
-        options={{ title: "Hồ sơ" }}
+        options={{ title: "Profile" }}
       />
     </Tabs.Navigator>
   );
