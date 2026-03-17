@@ -17,16 +17,33 @@ import {
   fetchSellerListingDetail,
   publishListing,
   archiveListing,
+  markAsSold,
   deleteListing,
 } from "../services/api.sellerListings";
+import { createInspectionRequest } from "../services/api.inspector";
 import { formatPrice } from "../utils/formatters";
 
 const { width } = Dimensions.get("window");
+
+function parsePrice(price) {
+  if (!price) return 0;
+  if (typeof price === "number") return price;
+  if (price.s !== undefined && price.e !== undefined && price.d) {
+    const sign = price.s === 1 ? 1 : -1;
+    const digits = price.d.join("");
+    const exponent = price.e;
+    const numStr = digits.substring(0, exponent + 1) + (digits.length > exponent + 1 ? "." + digits.substring(exponent + 1) : "");
+    return sign * parseFloat(numStr);
+  }
+  return parseFloat(price) || 0;
+}
 
 const STATUS_MAP = {
   DRAFT: { label: "Draft", color: "#6b7280", bgColor: "#f3f4f6" },
   PENDING_APPROVAL: { label: "Pending Approval", color: "#d97706", bgColor: "#fef3c7" },
   APPROVED: { label: "Approved", color: "#16a34a", bgColor: "#dcfce7" },
+  SHOW: { label: "Visible", color: "#059669", bgColor: "#d1fae5" },
+  HIDE: { label: "Hidden", color: "#4b5563", bgColor: "#e5e7eb" },
   RESERVED: { label: "Reserved", color: "#ea580c", bgColor: "#ffedd5" },
   SOLD: { label: "Sold", color: "#0891b2", bgColor: "#cffafe" },
   REJECTED: { label: "Rejected", color: "#dc2626", bgColor: "#fee2e2" },
@@ -44,6 +61,7 @@ const SellerListingDetail = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isRequestingInspection, setIsRequestingInspection] = useState(false);
 
   const fetchListingDetail = async () => {
     if (!listingId) {
@@ -53,6 +71,7 @@ const SellerListingDetail = () => {
     try {
       const response = await fetchSellerListingDetail(listingId);
       setListing(response.data || response);
+      console.log("Fetched listing detail:", response.data || response);
     } catch (error) {
       console.error("Error fetching listing detail:", error);
       Alert.alert("Error", "Unable to load product details");
@@ -68,11 +87,11 @@ const SellerListingDetail = () => {
   );
 
   const handlePublish = async () => {
-    if (!listing?.id) return;
+    if (!listingId) return;
     
     setActionLoading(true);
     try {
-      await publishListing(listing.id);
+      await publishListing(listingId);
       Alert.alert("Success", "Listing submitted for approval");
       fetchListingDetail();
     } catch (error) {
@@ -84,23 +103,75 @@ const SellerListingDetail = () => {
   };
 
   const handleArchive = async () => {
-    if (!listing?.id) return;
+    if (!listingId) return;
     
     setActionLoading(true);
     try {
-      await archiveListing(listing.id);
-      Alert.alert("Success", "Listing archived");
+      await archiveListing(listingId);
+      Alert.alert("Success", "Listing hidden");
       fetchListingDetail();
     } catch (error) {
       console.error("Error archiving listing:", error);
-      Alert.alert("Error", "Unable to archive listing");
+      Alert.alert("Error", "Unable to hide listing");
     } finally {
       setActionLoading(false);
     }
   };
 
+  const handleMarkAsSold = async () => {
+    if (!listingId) return;
+
+    Alert.alert("Confirm", "Mark this listing as sold?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Mark Sold",
+        onPress: async () => {
+          setActionLoading(true);
+          try {
+            await markAsSold(listingId);
+            Alert.alert("Success", "Marked as sold");
+            fetchListingDetail();
+          } catch (error) {
+            console.error("Error marking as sold:", error);
+            Alert.alert("Error", "Unable to mark as sold");
+          } finally {
+            setActionLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleRequestInspection = () => {
+    if (!listingId) return;
+
+    Alert.alert(
+      "Request Inspection",
+      "Do you want to request an inspection for this listing?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Submit Request",
+          onPress: async () => {
+            try {
+              setIsRequestingInspection(true);
+              await createInspectionRequest(listingId);
+              Alert.alert("Success", "Inspection request submitted successfully");
+              fetchListingDetail();
+            } catch (error) {
+              const msg = error?.response?.data?.message || "Unable to submit inspection request";
+              Alert.alert("Error", msg);
+            } finally {
+              setIsRequestingInspection(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDelete = () => {
-    if (!listing?.id) return;
+    if (!listingId) return;
     
     Alert.alert(
       "Confirm Delete",
@@ -113,7 +184,7 @@ const SellerListingDetail = () => {
           onPress: async () => {
             setActionLoading(true);
             try {
-              await deleteListing(listing.id);
+              await deleteListing(listingId);
               Alert.alert("Success", "Listing deleted", [
                 { text: "OK", onPress: () => navigation.goBack() },
               ]);
@@ -166,13 +237,21 @@ const SellerListingDetail = () => {
     );
   }
 
+  const vehicleData = listing.vehicle || {};
+  const mediaData = listing.media || [];
+  const sellerData = listing.seller || {};
+  const inspections = listing.inspections || [];
+  const price = parsePrice(vehicleData.price);
+
   const statusInfo = STATUS_MAP[listing.status] || { 
     label: listing.status, 
     color: "#4b5563", 
     bgColor: "#e5e7eb" 
   };
 
-  const images = listing.images || [];
+  const images = mediaData.length > 0
+    ? mediaData.map((m) => ({ url: m.file_url, is_cover: m.is_cover }))
+    : [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -189,7 +268,9 @@ const SellerListingDetail = () => {
         {/* Status Bar */}
         <View style={styles.statusBar}>
           <View style={styles.statusRow}>
-            <Text style={styles.listingIdText}>#{listing.id}</Text>
+            <Text style={styles.listingIdText} numberOfLines={1}>
+              #{listing.listing_id || listing.id}
+            </Text>
             <View
               style={[
                 styles.statusBadge,
@@ -202,41 +283,41 @@ const SellerListingDetail = () => {
             </View>
           </View>
           <Text style={styles.dateText}>
-            Created: {formatDate(listing.createdAt)}
+            Created: {formatDate(listing.created_at)}
           </Text>
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            {listing.status === "DRAFT" && (
+            {listing.status !== "SHOW" && listing.status !== "SOLD" && (
               <Pressable
-                style={[styles.btn, styles.btnPrimary]}
+                style={[styles.btn, styles.btnSuccess]}
                 onPress={handlePublish}
                 disabled={actionLoading}
               >
-                <MaterialCommunityIcons name="send" size={16} color="#fff" />
-                <Text style={styles.btnPrimaryText}>Publish</Text>
+                <MaterialCommunityIcons name="eye" size={16} color="#059669" />
+                <Text style={styles.btnSuccessText}>Show</Text>
               </Pressable>
             )}
-            
-            {listing.status === "APPROVED" && (
+
+            {listing.status !== "HIDE" && listing.status !== "SOLD" && (
               <Pressable
                 style={[styles.btn, styles.btnOutline]}
                 onPress={handleArchive}
                 disabled={actionLoading}
               >
-                <MaterialCommunityIcons name="archive" size={16} color="#359EFF" />
-                <Text style={styles.btnOutlineText}>Archive</Text>
+                <MaterialCommunityIcons name="eye-off" size={16} color="#359EFF" />
+                <Text style={styles.btnOutlineText}>Hide</Text>
               </Pressable>
             )}
-            
-            {listing.status === "ARCHIVED" && (
+
+            {listing.status !== "SOLD" && (
               <Pressable
-                style={[styles.btn, styles.btnPrimary]}
-                onPress={handlePublish}
+                style={[styles.btn, styles.btnWarning]}
+                onPress={handleMarkAsSold}
                 disabled={actionLoading}
               >
-                <MaterialCommunityIcons name="send" size={16} color="#fff" />
-                <Text style={styles.btnPrimaryText}>Republish</Text>
+                <MaterialCommunityIcons name="check-circle" size={16} color="#d97706" />
+                <Text style={styles.btnWarningText}>Sold</Text>
               </Pressable>
             )}
 
@@ -260,6 +341,80 @@ const SellerListingDetail = () => {
               <MaterialCommunityIcons name="delete" size={16} color="#dc2626" />
               <Text style={styles.btnDangerText}>Delete</Text>
             </Pressable>
+          </View>
+
+          {/* Inspection Request */}
+          <View style={styles.inspectionSection}>
+            {inspections.length > 0 && (() => {
+              const latestInspection = inspections[inspections.length - 1];
+              const resultStatus = latestInspection.result_status;
+              const requestStatus = latestInspection.request_status;
+              const isPassed = resultStatus === "PASSED";
+              const isFailed = resultStatus === "FAILED";
+              const statusColor = isPassed ? "#16a34a" : isFailed ? "#dc2626" : "#d97706";
+              const statusBg = isPassed ? "#dcfce7" : isFailed ? "#fee2e2" : "#fef3c7";
+              const statusIcon = isPassed ? "shield-check" : isFailed ? "shield-alert" : "shield-half-full";
+              const statusLabel = isPassed
+                ? "Inspected - Passed"
+                : isFailed
+                ? "Inspected - Failed"
+                : requestStatus === "CONFIRMED"
+                ? "Inspection In Progress"
+                : requestStatus === "CANCELLED"
+                ? "Inspection Cancelled"
+                : "Pending Inspection";
+
+              return (
+                <View style={styles.inspectionResult}>
+                  <View style={[styles.inspectionHeader, { backgroundColor: statusBg }]}>
+                    <MaterialCommunityIcons name={statusIcon} size={20} color={statusColor} />
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: statusColor }}>
+                      {statusLabel}
+                    </Text>
+                  </View>
+                  {latestInspection.notes && (
+                    <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+                      <Text style={{ fontSize: 13, color: "#555", lineHeight: 20 }}>
+                        {latestInspection.notes}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
+            {(() => {
+              const hasPending = inspections.some(
+                (i) => i.request_status === "PENDING" || i.request_status === "CONFIRMED"
+              );
+              if (listing.status === "SOLD") return null;
+              if (hasPending) return (
+                <View style={[styles.inspectionBtn, { borderColor: "#d1d5db", backgroundColor: "#f3f4f6" }]}>
+                  <MaterialCommunityIcons name="clock-outline" size={20} color="#6b7280" />
+                  <Text style={[styles.inspectionBtnText, { color: "#6b7280" }]}>
+                    Inspection Request Pending
+                  </Text>
+                </View>
+              );
+              return (
+                <Pressable
+                  onPress={handleRequestInspection}
+                  disabled={isRequestingInspection}
+                  style={({ pressed }) => ([
+                    styles.inspectionBtn,
+                    pressed && { backgroundColor: "#e0f2fe" },
+                  ])}
+                >
+                  {isRequestingInspection ? (
+                    <ActivityIndicator size="small" color="#2563eb" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="shield-search" size={20} color="#2563eb" />
+                      <Text style={styles.inspectionBtnText}>Request Inspection</Text>
+                    </>
+                  )}
+                </Pressable>
+              );
+            })()}
           </View>
         </View>
 
@@ -307,59 +462,145 @@ const SellerListingDetail = () => {
 
         {/* Info Section */}
         <View style={styles.infoSection}>
-          <Text style={styles.title}>{listing.title || listing.name}</Text>
-          <Text style={styles.price}>{formatPrice(listing.price)}</Text>
+          <Text style={styles.title}>
+            {vehicleData.brand} {vehicleData.model}
+          </Text>
+          <Text style={styles.price}>
+            {price ? `₫${price.toLocaleString("vi-VN")}` : "Contact for price"}
+          </Text>
 
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>
-            {listing.description || "No description"}
+            {vehicleData.description || "No description"}
           </Text>
 
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>Specifications</Text>
           <View style={styles.attributesGrid}>
-            {listing.brand && (
+            {vehicleData.brand && (
               <View style={styles.attrRow}>
                 <Text style={styles.attrLabel}>Brand:</Text>
-                <Text style={styles.attrValue}>{listing.brand}</Text>
+                <Text style={styles.attrValue}>{vehicleData.brand}</Text>
               </View>
             )}
-            {listing.model && (
+            {vehicleData.model && (
               <View style={styles.attrRow}>
                 <Text style={styles.attrLabel}>Model:</Text>
-                <Text style={styles.attrValue}>{listing.model}</Text>
+                <Text style={styles.attrValue}>{vehicleData.model}</Text>
               </View>
             )}
-            {listing.year && (
+            {vehicleData.year && (
               <View style={styles.attrRow}>
                 <Text style={styles.attrLabel}>Year:</Text>
-                <Text style={styles.attrValue}>{listing.year}</Text>
+                <Text style={styles.attrValue}>{vehicleData.year}</Text>
               </View>
             )}
-            {listing.condition && (
+            {vehicleData.condition && (
               <View style={styles.attrRow}>
                 <Text style={styles.attrLabel}>Condition:</Text>
-                <Text style={styles.attrValue}>{listing.condition}</Text>
+                <Text style={styles.attrValue}>{vehicleData.condition}</Text>
               </View>
             )}
-            {listing.category && (
+            {vehicleData.bike_type && (
               <View style={styles.attrRow}>
-                <Text style={styles.attrLabel}>Category:</Text>
-                <Text style={styles.attrValue}>{listing.category}</Text>
+                <Text style={styles.attrLabel}>Bike Type:</Text>
+                <Text style={styles.attrValue}>{vehicleData.bike_type}</Text>
+              </View>
+            )}
+            {vehicleData.material && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Material:</Text>
+                <Text style={styles.attrValue}>{vehicleData.material}</Text>
+              </View>
+            )}
+            {vehicleData.brake_type && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Brake Type:</Text>
+                <Text style={styles.attrValue}>{vehicleData.brake_type}</Text>
+              </View>
+            )}
+            {vehicleData.wheel_size && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Wheel Size:</Text>
+                <Text style={styles.attrValue}>{vehicleData.wheel_size}"</Text>
+              </View>
+            )}
+            {vehicleData.frame_size && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Frame Size:</Text>
+                <Text style={styles.attrValue}>{vehicleData.frame_size}</Text>
+              </View>
+            )}
+            {vehicleData.groupset && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Groupset:</Text>
+                <Text style={styles.attrValue}>{vehicleData.groupset}</Text>
+              </View>
+            )}
+            {vehicleData.usage_level && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Usage Level:</Text>
+                <Text style={styles.attrValue}>{vehicleData.usage_level}</Text>
+              </View>
+            )}
+            {vehicleData.mileage_km != null && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Mileage:</Text>
+                <Text style={styles.attrValue}>{vehicleData.mileage_km} km</Text>
+              </View>
+            )}
+            {vehicleData.frame_serial && (
+              <View style={styles.attrRow}>
+                <Text style={styles.attrLabel}>Frame Serial:</Text>
+                <Text style={styles.attrValue}>{vehicleData.frame_serial}</Text>
               </View>
             )}
           </View>
 
-          {listing.location && (
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionTitle}>Additional Info</Text>
+          <View style={styles.tagsRow}>
+            <View style={[styles.tag, { backgroundColor: vehicleData.is_original ? "#dcfce7" : "#fee2e2" }]}>
+              <MaterialCommunityIcons
+                name="check-decagram"
+                size={14}
+                color={vehicleData.is_original ? "#16a34a" : "#dc2626"}
+              />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: vehicleData.is_original ? "#16a34a" : "#dc2626" }}>
+                Original Parts
+              </Text>
+            </View>
+            <View style={[styles.tag, { backgroundColor: vehicleData.has_receipt ? "#dcfce7" : "#fee2e2" }]}>
+              <MaterialCommunityIcons
+                name="receipt"
+                size={14}
+                color={vehicleData.has_receipt ? "#16a34a" : "#dc2626"}
+              />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: vehicleData.has_receipt ? "#16a34a" : "#dc2626" }}>
+                Has Receipt
+              </Text>
+            </View>
+          </View>
+
+          {/* Seller Info */}
+          {sellerData.full_name && (
             <>
               <View style={styles.divider} />
-              <Text style={styles.sectionTitle}>Location</Text>
-              <View style={styles.locationRow}>
-                <MaterialCommunityIcons name="map-marker" size={20} color="#6b7280" />
-                <Text style={styles.locationText}>{listing.location}</Text>
+              <Text style={styles.sectionTitle}>Seller</Text>
+              <View style={styles.sellerRow}>
+                <View style={styles.sellerAvatar}>
+                  <Text style={styles.sellerAvatarText}>
+                    {sellerData.full_name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sellerName}>{sellerData.full_name}</Text>
+                  <Text style={styles.sellerMeta}>{sellerData.email}</Text>
+                </View>
               </View>
             </>
           )}
@@ -408,9 +649,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   listingIdText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#374151",
+    flex: 1,
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -456,6 +698,50 @@ const styles = StyleSheet.create({
     backgroundColor: "#fef2f2",
   },
   btnDangerText: { color: "#dc2626", fontSize: 14, fontWeight: "600" },
+  btnSuccess: {
+    backgroundColor: "#ecfdf5",
+    borderColor: "#a7f3d0",
+  },
+  btnSuccessText: { color: "#059669", fontSize: 14, fontWeight: "600" },
+  btnWarning: {
+    backgroundColor: "#fffbeb",
+    borderColor: "#fde68a",
+  },
+  btnWarningText: { color: "#d97706", fontSize: 14, fontWeight: "600" },
+  inspectionSection: {
+    marginTop: 16,
+    gap: 10,
+  },
+  inspectionResult: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    overflow: "hidden",
+  },
+  inspectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  inspectionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1.5,
+    borderColor: "#93c5fd",
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  inspectionBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#2563eb",
+  },
   mediaContainer: {
     backgroundColor: "#fff",
     marginBottom: 8,
@@ -565,6 +851,47 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#4b5563",
     flex: 1,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  sellerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sellerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#e8f4ff",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sellerAvatarText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#359EFF",
+  },
+  sellerName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  sellerMeta: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginTop: 2,
   },
 });
 

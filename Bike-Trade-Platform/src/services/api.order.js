@@ -98,13 +98,41 @@ export const completeOrder = async (orderId) => {
   }
 };
 
+// Seller xác nhận đơn hàng (cho escrow)
+export const sellerConfirmOrder = async (orderId) => {
+  try {
+    const response = await instance.patch(`/orders/${orderId}/seller-confirm`);
+    return response.data;
+  } catch (error) {
+    console.error("Error seller confirming order:", error);
+    throw error;
+  }
+};
+
+// Seller từ chối đơn hàng (cho escrow)
+export const sellerRejectOrder = async (orderId, reason) => {
+  try {
+    const response = await instance.patch(`/orders/${orderId}/seller-reject`, {
+      reason,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error seller rejecting order:", error);
+    throw error;
+  }
+};
+
 /**
  * Order Status Constants
  * Dùng để filter hoặc hiển thị trạng thái
  */
 export const OrderStatus = {
   PENDING: "PENDING",
+  DEPOSITED: "DEPOSITED",
   CONFIRMED: "CONFIRMED",
+  PAID: "PAID",
+  FORFEITED: "FORFEITED",
   CANCELLED: "CANCELLED",
+  CANCELLED_BY_SELLER: "CANCELLED_BY_SELLER",
   COMPLETED: "COMPLETED",
 };

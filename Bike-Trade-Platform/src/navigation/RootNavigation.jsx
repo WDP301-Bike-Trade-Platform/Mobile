@@ -29,7 +29,7 @@ import Report from "../screens/Report";
 import MyInspections from "../screens/MyInspections";
 import InspectorDashboard from "../screens/inspector/InspectorDashboard";
 import InspectionDetail from "../screens/inspector/InspectionDetail";
-import InspectorProfile from "../screens/inspector/InspectorProfile";
+import ShipmentTracking from "../screens/ShipmentTracking";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
@@ -279,6 +279,7 @@ const RootNavigation = () => {
             <Stack.Screen name="MyInspections" component={MyInspections} />
             <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancel} />
+            <Stack.Screen name="ShipmentTracking" component={ShipmentTracking} />
           </>
         )}
       </Stack.Navigator>

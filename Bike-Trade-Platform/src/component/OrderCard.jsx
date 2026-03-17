@@ -4,13 +4,17 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import StatusBadge from './StatusBadge';
 import { formatPrice, formatDate } from '../utils/formatters';
 
-const OrderCard = ({ order, onPress, onAction, actionType }) => {
+const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }) => {
   const getStatusColor = (status) => {
     const colors = {
       PENDING: '#f59e0b',
+      DEPOSITED: '#8b5cf6',
       CONFIRMED: '#3b82f6',
-      COMPLETED: '#10b981',
+      PAID: '#06b6d4',
+      FORFEITED: '#dc2626',
       CANCELLED: '#ef4444',
+      CANCELLED_BY_SELLER: '#f97316',
+      COMPLETED: '#10b981',
     };
     return colors[status] || '#6b7280';
   };
@@ -18,9 +22,13 @@ const OrderCard = ({ order, onPress, onAction, actionType }) => {
   const getStatusText = (status) => {
     const texts = {
       PENDING: 'Pending',
+      DEPOSITED: 'Deposited',
       CONFIRMED: 'Confirmed',
-      COMPLETED: 'Completed',
+      PAID: 'Paid',
+      FORFEITED: 'Forfeited',
       CANCELLED: 'Cancelled',
+      CANCELLED_BY_SELLER: 'Rejected by Seller',
+      COMPLETED: 'Completed',
     };
     return texts[status] || status;
   };
@@ -80,6 +88,43 @@ const OrderCard = ({ order, onPress, onAction, actionType }) => {
             Complete Order
           </Text>
         </Pressable>
+      );
+    }
+
+    if (actionType === 'seller-confirm-reject' && order.status === 'DEPOSITED') {
+      return (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            onPress={onConfirm}
+            style={({ pressed }) => ({
+              flex: 1,
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 8,
+              backgroundColor: '#dbeafe',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#3b82f6', textAlign: 'center' }}>
+              Confirm
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onReject}
+            style={({ pressed }) => ({
+              flex: 1,
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 8,
+              backgroundColor: '#fee2e2',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#ef4444', textAlign: 'center' }}>
+              Reject
+            </Text>
+          </Pressable>
+        </View>
       );
     }
 

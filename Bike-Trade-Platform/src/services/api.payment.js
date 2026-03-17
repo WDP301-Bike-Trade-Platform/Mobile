@@ -5,10 +5,12 @@ import { instance } from "../lib/axios";
  */
 
 // Tạo payment link cho listing đơn lẻ
-export const createPaymentForListing = async (listingId) => {
+export const createPaymentForListing = async (listingId, paymentStage = 'DEPOSIT') => {
   try {
     const response = await instance.post("/payment/create-for-listing", {
       listingId,
+      paymentStage,
+      platform: 'MOBILE',
     });
     return response.data;
   } catch (error) {
@@ -18,10 +20,12 @@ export const createPaymentForListing = async (listingId) => {
 };
 
 // Tạo payment link cho order (nhiều items từ cart)
-export const createPaymentForOrder = async (orderId) => {
+export const createPaymentForOrder = async (orderId, paymentStage = 'DEPOSIT') => {
   try {
     const response = await instance.post("/payment/create-for-order", {
       orderId,
+      paymentStage,
+      platform: 'MOBILE',
     });
     return response.data;
   } catch (error) {

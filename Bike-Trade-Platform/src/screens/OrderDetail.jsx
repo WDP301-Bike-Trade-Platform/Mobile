@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { getOrderById, cancelOrder, confirmOrder, completeOrder } from '../services/api.order';
+import { getOrderById, cancelOrder, confirmOrder, completeOrder, sellerConfirmOrder, sellerRejectOrder } from '../services/api.order';
 import { createPaymentForOrder } from '../services/api.payment';
 import { useAppContext } from '../provider/AppProvider';
 import HeaderBar from '../component/HeaderBar';
@@ -20,16 +20,24 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const STATUS_MAP = {
   PENDING: 'Pending Payment',
+  DEPOSITED: 'Deposit Paid',
   CONFIRMED: 'Confirmed',
-  COMPLETED: 'Completed',
+  PAID: 'Paid',
+  FORFEITED: 'Forfeited',
   CANCELLED: 'Cancelled',
+  CANCELLED_BY_SELLER: 'Rejected by Seller',
+  COMPLETED: 'Completed',
 };
 
 const STATUS_COLORS = {
   PENDING: { bg: '#fef3c7', text: '#d97706', icon: 'clock-outline' },
+  DEPOSITED: { bg: '#f3e8ff', text: '#7c3aed', icon: 'cash' },
   CONFIRMED: { bg: '#dbeafe', text: '#2563eb', icon: 'check-circle-outline' },
-  COMPLETED: { bg: '#dcfce7', text: '#16a34a', icon: 'check-decagram' },
+  PAID: { bg: '#cffafe', text: '#0891b2', icon: 'credit-card-check' },
+  FORFEITED: { bg: '#fef2f2', text: '#dc2626', icon: 'alert-circle' },
   CANCELLED: { bg: '#fee2e2', text: '#dc2626', icon: 'close-circle' },
+  CANCELLED_BY_SELLER: { bg: '#fed7aa', text: '#ea580c', icon: 'close-circle-outline' },
+  COMPLETED: { bg: '#dcfce7', text: '#16a34a', icon: 'check-decagram' },
 };
 
 const OrderDetail = ({ route, navigation }) => {
@@ -64,7 +72,8 @@ const OrderDetail = ({ route, navigation }) => {
   const handlePayment = async () => {
     try {
       setProcessingPayment(true);
-      const response = await createPaymentForOrder(orderId);
+      const paymentStage = order.status === 'CONFIRMED' ? 'REMAINING' : 'DEPOSIT';
+      const response = await createPaymentForOrder(orderId, paymentStage);
       const paymentData = response?.data || response;
 
       if (paymentData.paymentLink) {
@@ -151,6 +160,50 @@ const OrderDetail = ({ route, navigation }) => {
     ]);
   };
 
+  const handleSellerConfirm = () => {
+    Alert.alert('Confirm Order', 'Are you sure you want to confirm this order? This will start the 3-minute countdown for the buyer to pay the remaining amount.', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Confirm',
+        onPress: async () => {
+          try {
+            setProcessingAction(true);
+            await sellerConfirmOrder(orderId);
+            Alert.alert('Success', 'Order confirmed. Buyer has 3 minutes to pay the remaining amount.');
+            fetchOrderDetail();
+          } catch (error) {
+            console.error('Error confirming order:', error);
+            Alert.alert('Error', 'Unable to confirm order');
+          } finally {
+            setProcessingAction(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleSellerReject = () => {
+    Alert.alert('Reject Order', 'Are you sure you want to reject this order? The deposit will be refunded and the listing will be available again.', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Reject',
+        onPress: async () => {
+          try {
+            setProcessingAction(true);
+            await sellerRejectOrder(orderId, 'Rejected by seller');
+            Alert.alert('Success', 'Order rejected. Deposit will be refunded.');
+            fetchOrderDetail();
+          } catch (error) {
+            console.error('Error rejecting order:', error);
+            Alert.alert('Error', 'Unable to reject order');
+          } finally {
+            setProcessingAction(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const getShippingAddress = () => {
     if (!order?.orderAddresses || order.orderAddresses.length === 0) return null;
     const shippingAddr = order.orderAddresses.find(a => a.address_type === 'SHIPPING');
@@ -207,14 +260,16 @@ const OrderDetail = ({ route, navigation }) => {
   const meta = order.meta || {};
   const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS.PENDING;
 
-  // Buyer can cancel PENDING orders (not CONFIRMED or COMPLETED per backend)
+  // Buyer can pay deposit when PENDING
+  const buyerCanPayDeposit = isBuyer && order.status === 'PENDING';
+  // Buyer can pay remaining when CONFIRMED
+  const buyerCanPayRemaining = isBuyer && order.status === 'CONFIRMED';
+  // Seller can confirm/reject when DEPOSITED
+  const sellerCanConfirmReject = isSeller && order.status === 'DEPOSITED';
+  // Buyer can complete when PAID
+  const buyerCanComplete = isBuyer && order.status === 'PAID';
+  // Buyer can cancel when PENDING (before deposit)
   const buyerCanCancel = isBuyer && order.status === 'PENDING';
-  // Buyer can pay when PENDING
-  const buyerCanPay = isBuyer && order.status === 'PENDING';
-  // Seller can confirm PENDING orders
-  const sellerCanConfirm = isSeller && order.status === 'PENDING';
-  // Buyer confirms completion when CONFIRMED
-  const buyerCanComplete = isBuyer && order.status === 'CONFIRMED';
 
   const shippingAddr = getShippingAddress();
 
@@ -393,8 +448,8 @@ const OrderDetail = ({ route, navigation }) => {
 
         {/* Actions */}
         <View style={{ gap: 12 }}>
-          {/* Buyer: Pay (PENDING) */}
-          {buyerCanPay && (
+          {/* Buyer: Pay Deposit (PENDING) */}
+          {buyerCanPayDeposit && (
             <View>
               <Pressable
                 onPress={handlePayment}
@@ -415,49 +470,105 @@ const OrderDetail = ({ route, navigation }) => {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="credit-card-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Now</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Deposit (10%)</Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Pay via PayOS
+                Pay 10% deposit to lock the listing
               </Text>
             </View>
           )}
 
-          {/* Seller: Confirm COD (PENDING + COD only) */}
-          {sellerCanConfirm && (
+          {/* Buyer: Pay Remaining (CONFIRMED) */}
+          {buyerCanPayRemaining && (
             <View>
               <Pressable
-                onPress={handleConfirmOrder}
-                disabled={processingAction}
+                onPress={handlePayment}
+                disabled={processingPayment}
                 style={({ pressed }) => ({
                   flexDirection: 'row',
                   justifyContent: 'center',
                   alignItems: 'center',
                   paddingVertical: 14,
                   borderRadius: 12,
-                  backgroundColor: '#389cfa',
+                  backgroundColor: '#f59e0b',
                   gap: 8,
-                  opacity: pressed || processingAction ? 0.7 : 1,
+                  opacity: pressed || processingPayment ? 0.7 : 1,
                 })}
               >
-                {processingAction ? (
+                {processingPayment ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="check-circle-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Confirm Order</Text>
+                    <MaterialCommunityIcons name="credit-card-outline" size={20} color="#fff" />
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Remaining (90%)</Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Manually confirm COD order
+                Complete payment within 3 minutes
               </Text>
             </View>
           )}
 
-          {/* Buyer: Complete (CONFIRMED) */}
+          {/* Seller: Confirm/Reject (DEPOSITED) */}
+          {sellerCanConfirmReject && (
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Pressable
+                  onPress={handleSellerConfirm}
+                  disabled={processingAction}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: '#10b981',
+                    gap: 8,
+                    opacity: pressed || processingAction ? 0.7 : 1,
+                  })}
+                >
+                  {processingAction ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="check-circle-outline" size={20} color="#fff" />
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Confirm</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Pressable
+                  onPress={handleSellerReject}
+                  disabled={processingAction}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    backgroundColor: '#ef4444',
+                    gap: 8,
+                    opacity: pressed || processingAction ? 0.7 : 1,
+                  })}
+                >
+                  {processingAction ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="close-circle-outline" size={20} color="#fff" />
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Reject</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Buyer: Complete (PAID) */}
           {buyerCanComplete && (
             <View>
               <Pressable
@@ -489,7 +600,7 @@ const OrderDetail = ({ route, navigation }) => {
             </View>
           )}
 
-          {/* Buyer: Cancel (PENDING) */}
+          {/* Buyer: Cancel (PENDING) - only if not escrow */}
           {buyerCanCancel && (
             <Pressable
               onPress={handleCancelOrder}

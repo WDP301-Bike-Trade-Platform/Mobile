@@ -15,7 +15,6 @@ import { useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCart } from "../hooks/useCart";
 import { getProductById } from "../services/api.products";
-import { createInspectionRequest } from "../services/api.inspector";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -115,7 +114,6 @@ const Detail = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isRequestingInspection, setIsRequestingInspection] = useState(false);
 
   const {
     addStorageData: addToFavorites,
@@ -150,26 +148,8 @@ const Detail = () => {
   const handleRequestInspection = () => {
     Alert.alert(
       "Request Inspection",
-      "Do you want to request an inspection for this bike?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Submit Request",
-          onPress: async () => {
-            try {
-              setIsRequestingInspection(true);
-              await createInspectionRequest(listingId);
-              Alert.alert("Success", "Inspection request submitted successfully");
-              fetchProduct();
-            } catch (error) {
-              const msg = error?.response?.data?.message || "Unable to submit inspection request";
-              Alert.alert("Error", msg);
-            } finally {
-              setIsRequestingInspection(false);
-            }
-          },
-        },
-      ]
+      "To request an inspection, please go to My Listings and use the inspection feature from your listing detail page.",
+      [{ text: "OK" }]
     );
   };
 
@@ -794,34 +774,6 @@ const Detail = () => {
                   </View>
                 )}
               </View>
-            )}
-            {!isSold && (
-              <Pressable
-                onPress={handleRequestInspection}
-                disabled={isRequestingInspection}
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  backgroundColor: pressed ? "#e0f2fe" : "#eff6ff",
-                  borderWidth: 1.5,
-                  borderColor: "#93c5fd",
-                  borderRadius: 14,
-                  paddingVertical: 14,
-                })}
-              >
-                {isRequestingInspection ? (
-                  <ActivityIndicator size="small" color="#2563eb" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons name="shield-search" size={20} color="#2563eb" />
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#2563eb" }}>
-                      Request Inspection
-                    </Text>
-                  </>
-                )}
-              </Pressable>
             )}
           </View>
         </View>

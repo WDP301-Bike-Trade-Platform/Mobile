@@ -16,10 +16,6 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   fetchSellerListings,
-  publishListing,
-  archiveListing,
-  markAsSold,
-  deleteListing,
 } from "../services/api.sellerListings";
 import { formatPrice } from "../utils/formatters";
 import { checkProfileComplete } from "../utils/profileCheck";
@@ -59,7 +55,6 @@ const MyPost = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("");
   const [skip, setSkip] = useState(0);
-  const [actionLoading, setActionLoading] = useState(null);
   const take = 15;
 
   const formatDate = (dateString) => {
@@ -153,67 +148,6 @@ const MyPost = () => {
     }
   };
 
-  const handlePublish = async (id) => {
-    setActionLoading(id);
-    try {
-      await publishListing(id);
-      Alert.alert("Success", "Listing published");
-      fetchListings(activeTab, 0);
-    } catch (err) {
-      Alert.alert("Error", getPublishErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleArchive = async (id) => {
-    setActionLoading(id);
-    try {
-      await archiveListing(id);
-      Alert.alert("Success", "Listing hidden");
-      fetchListings(activeTab, 0);
-    } catch (err) {
-      Alert.alert("Error", getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleMarkAsSold = async (id) => {
-    setActionLoading(id);
-    try {
-      await markAsSold(id);
-      Alert.alert("Success", "Marked as sold");
-      fetchListings(activeTab, 0);
-    } catch (err) {
-      Alert.alert("Error", getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    Alert.alert("Confirm", "Are you sure you want to delete this listing?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          setActionLoading(id);
-          try {
-            await deleteListing(id);
-            Alert.alert("Success", "Listing deleted");
-            fetchListings(activeTab, 0);
-          } catch (err) {
-            Alert.alert("Error", getErrorMessage(err));
-          } finally {
-            setActionLoading(null);
-          }
-        },
-      },
-    ]);
-  };
-
   const renderStatusBadge = (status) => {
     const backgroundColor = STATUS_COLORS[status] || "#e5e7eb";
     const textColor = STATUS_TEXT_COLORS[status] || "#4b5563";
@@ -267,90 +201,6 @@ const MyPost = () => {
           </View>
         </View>
       </Pressable>
-    );
-  };
-
-  const renderCardActions = (item) => {
-    const isLoading = actionLoading === item.id;
-    
-    return (
-      <View style={styles.cardActions}>
-        {/* Status actions - show relevant options based on current status */}
-        {item.status !== "SHOW" && (
-          <Pressable
-            style={[styles.actionButton, styles.showButton, isLoading && styles.actionButtonDisabled]}
-            onPress={() => handlePublish(item.id)}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#059669" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="eye" size={14} color="#059669" />
-                <Text style={[styles.actionButtonText, { color: "#059669" }]}>Show</Text>
-              </>
-            )}
-          </Pressable>
-        )}
-
-        {item.status !== "HIDE" && (
-          <Pressable
-            style={[styles.actionButton, isLoading && styles.actionButtonDisabled]}
-            onPress={() => handleArchive(item.id)}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#4b5563" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="eye-off" size={14} color="#4b5563" />
-                <Text style={styles.actionButtonText}>Hide</Text>
-              </>
-            )}
-          </Pressable>
-        )}
-
-        {item.status !== "SOLD" && (
-          <Pressable
-            style={[styles.actionButton, styles.soldButton, isLoading && styles.actionButtonDisabled]}
-            onPress={() => handleMarkAsSold(item.id)}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#d97706" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="check-circle" size={14} color="#d97706" />
-                <Text style={[styles.actionButtonText, { color: "#d97706" }]}>Sold</Text>
-              </>
-            )}
-          </Pressable>
-        )}
-
-        <Pressable
-          style={[styles.actionButton, isLoading && styles.actionButtonDisabled]}
-          onPress={() => navigation.navigate("CreateProduct", { 
-            isEdit: true, 
-            productData: item 
-          })}
-          disabled={isLoading}
-        >
-          <MaterialCommunityIcons name="pencil" size={14} color="#3b82f6" />
-          <Text style={[styles.actionButtonText, { color: "#3b82f6" }]}>Edit</Text>
-        </Pressable>
-
-        <Pressable
-          style={[
-            styles.actionButton,
-            styles.deleteButton,
-            isLoading && styles.actionButtonDisabled,
-          ]}
-          onPress={() => handleDelete(item.id)}
-          disabled={isLoading}
-        >
-          <MaterialCommunityIcons name="delete" size={14} color="#dc2626" />
-        </Pressable>
-      </View>
     );
   };
 
@@ -452,7 +302,6 @@ const MyPost = () => {
             {listings.map((item) => (
               <View key={item.id} style={styles.cardWrapper}>
                 {renderListingCard({ item })}
-                {renderCardActions(item)}
               </View>
             ))}
           </View>
@@ -647,48 +496,6 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 11,
     color: "#6b7280",
-  },
-  cardActions: {
-    flexDirection: "row",
-    gap: 6,
-    paddingTop: 10,
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#f3f4f6",
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingVertical: 8,
-    backgroundColor: "#f9fafb",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  actionButtonDisabled: {
-    opacity: 0.6,
-  },
-  showButton: {
-    backgroundColor: "#ecfdf5",
-    borderColor: "#a7f3d0",
-  },
-  soldButton: {
-    backgroundColor: "#fffbeb",
-    borderColor: "#fde68a",
-  },
-  deleteButton: {
-    flex: 0,
-    paddingHorizontal: 10,
-    backgroundColor: "#fef2f2",
-    borderColor: "#fecaca",
-  },
-  actionButtonText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#4b5563",
   },
   loadingMore: {
     paddingVertical: 16,

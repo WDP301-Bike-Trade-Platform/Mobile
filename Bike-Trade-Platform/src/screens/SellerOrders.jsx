@@ -12,6 +12,8 @@ import {
   getSellerOrders,
   confirmOrder,
   completeOrder,
+  sellerConfirmOrder,
+  sellerRejectOrder,
   OrderStatus,
 } from '../services/api.order';
 import HeaderBar from '../component/HeaderBar';
@@ -83,10 +85,50 @@ const SellerOrders = ({ navigation }) => {
     ]);
   };
 
+  const handleSellerConfirm = (orderId) => {
+    Alert.alert('Confirm Order', 'Are you sure you want to confirm this order? This will start the 3-minute countdown for the buyer to pay the remaining amount.', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes',
+        onPress: async () => {
+          try {
+            await sellerConfirmOrder(orderId);
+            Alert.alert('Success', 'Order confirmed. Buyer has 3 minutes to pay the remaining amount.');
+            fetchOrders();
+          } catch (error) {
+            console.error('Error confirming order:', error);
+            Alert.alert('Error', 'Failed to confirm order');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleSellerReject = (orderId) => {
+    Alert.alert('Reject Order', 'Are you sure you want to reject this order? The deposit will be refunded and the listing will be available again.', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes',
+        onPress: async () => {
+          try {
+            await sellerRejectOrder(orderId, 'Rejected by seller');
+            Alert.alert('Success', 'Order rejected. Deposit will be refunded.');
+            fetchOrders();
+          } catch (error) {
+            console.error('Error rejecting order:', error);
+            Alert.alert('Error', 'Failed to reject order');
+          }
+        },
+      },
+    ]);
+  };
+
   const filters = [
     { label: 'All', value: null },
     { label: 'Pending', value: OrderStatus.PENDING },
+    { label: 'Deposited', value: OrderStatus.DEPOSITED },
     { label: 'Confirmed', value: OrderStatus.CONFIRMED },
+    { label: 'Paid', value: OrderStatus.PAID },
     { label: 'Completed', value: OrderStatus.COMPLETED },
     { label: 'Cancelled', value: OrderStatus.CANCELLED },
   ];
@@ -143,8 +185,12 @@ const SellerOrders = ({ navigation }) => {
                   ? 'confirm'
                   : order.status === 'CONFIRMED'
                   ? 'complete'
+                  : order.status === 'DEPOSITED'
+                  ? 'seller-confirm-reject'
                   : null
               }
+              onConfirm={order.status === 'DEPOSITED' ? () => handleSellerConfirm(order.order_id) : undefined}
+              onReject={order.status === 'DEPOSITED' ? () => handleSellerReject(order.order_id) : undefined}
             />
           ))
         )}

@@ -308,6 +308,12 @@ const Profile = () => {
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
           <MenuItem
+            icon="truck-delivery"
+            label="Track Shipment"
+            onPress={() => navigation.navigate("ShipmentTracking")}
+          />
+          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
+          <MenuItem
             icon="heart"
             label="Bicycle Wishlist"
             onPress={() => navigation.navigate("Favorites")}

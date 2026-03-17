@@ -381,6 +381,9 @@ const CreateProduct = () => {
         <InputField label="Model" field="model" placeholder="e.g., Escape 3" required value={formData.model} onChangeText={(value) => handleInputChange("model", value)} />
         <InputField label="Year" field="year" placeholder={new Date().getFullYear().toString()} keyboardType="numeric" required value={formData.year} onChangeText={(value) => handleInputChange("year", value)} />
         <InputField label="Price (₫)" field="price" placeholder="8500000" keyboardType="numeric" required value={formData.price} onChangeText={(value) => handleInputChange("price", value)} />
+        <Text style={{ fontSize: 12, color: "#666", marginBottom: 16, marginTop: -8 }}>
+          A 7% markup fee will be deducted from the selling price.
+        </Text>
 
         <Text style={{ fontSize: 16, fontWeight: "bold", color: "#222", marginBottom: 16, marginTop: 16 }}>
           Specifications
