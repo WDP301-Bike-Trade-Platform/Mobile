@@ -1,56 +1,136 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import HeaderBar from '../component/HeaderBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getShipmentByOrder } from '../services/api.shipment';
 
-const ShipmentTracking = ({ navigation }) => {
-  // Mock data - sẽ thay thế bằng API sau
-  const shipmentData = {
-    estimatedDelivery: 'Thursday, Oct 24',
-    status: 'ON TIME',
-    trackingNumber: 'PM-88294-BIKE-042',
-    courier: 'SwiftWheels Delivery Service',
-    updates: [
-      {
-        status: 'In Transit',
-        description: 'Arrived at Sort Facility - San Francisco, CA',
-        time: 'Today, 10:45 AM',
-        isActive: true,
-        icon: 'local_shipping',
-      },
-      {
-        status: 'Shipped',
-        description: 'Departed from Origin Warehouse - Seattle, WA',
-        time: 'Yesterday, 4:20 PM',
-        isActive: false,
-        icon: 'check',
-      },
-      {
-        status: 'Package Picked Up',
-        description: 'Courier has collected your Specialized Allez',
-        time: 'Oct 21, 9:15 AM',
-        isActive: false,
-        icon: 'check',
-      },
-      {
-        status: 'Order Confirmed',
-        description: 'Payment processed and seller notified',
-        time: 'Oct 20, 2:30 PM',
-        isActive: false,
-        icon: 'check',
-      },
-    ],
+const ShipmentTracking = ({ navigation, route }) => {
+  const { orderId } = route.params || {};
+  const [shipmentData, setShipmentData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (orderId) {
+      fetchShipmentData();
+    }
+  }, [orderId]);
+
+  const fetchShipmentData = async () => {
+    try {
+      setLoading(true);
+      const data = await getShipmentByOrder(orderId);
+      
+      // Transform API data to match component format
+      const transformedData = {
+        estimatedDelivery: data.estimatedDelivery ? new Date(data.estimatedDelivery).toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          month: 'short', 
+          day: 'numeric' 
+        }) : 'TBD',
+        status: data.status.replace('_', ' '),
+        trackingNumber: data.trackingNumber || 'N/A',
+        courier: data.carrier || 'Unknown Courier',
+        updates: transformTrackings(data.trackings || []),
+      };
+      
+      setShipmentData(transformedData);
+    } catch (err) {
+      console.error('Error fetching shipment data:', err);
+      setError('Failed to load shipment information');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const transformTrackings = (trackings) => {
+    // Sort trackings by trackedAt descending (latest first)
+    const sortedTrackings = trackings.sort((a, b) => new Date(b.trackedAt) - new Date(a.trackedAt));
+    
+    return sortedTrackings.map((tracking, index) => ({
+      status: tracking.status.replace('_', ' '),
+      description: tracking.description || `${tracking.status} - ${tracking.location || ''}`,
+      time: new Date(tracking.trackedAt).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      isActive: index === 0, // First item is active
+      icon: getStatusIcon(tracking.status),
+    }));
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return 'clock-outline';
+      case 'PICKED_UP':
+        return 'package-variant';
+      case 'IN_TRANSIT':
+        return 'local_shipping';
+      case 'OUT_FOR_DELIVERY':
+        return 'truck-delivery';
+      case 'DELIVERED':
+        return 'check-circle';
+      case 'FAILED':
+        return 'alert-circle';
+      case 'RETURNED':
+        return 'undo-variant';
+      case 'CANCELLED':
+        return 'close-circle';
+      default:
+        return 'package-variant';
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8', justifyContent: 'center', alignItems: 'center' }}>
+        <HeaderBar title="Track Shipment" onBack={() => navigation.goBack()} />
+        <ActivityIndicator size="large" color="#389cfa" />
+        <Text style={{ marginTop: 16, fontSize: 16, color: '#6b7280' }}>Loading shipment details...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !shipmentData) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8' }}>
+        <HeaderBar title="Track Shipment" onBack={() => navigation.goBack()} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <MaterialCommunityIcons name="alert-circle" size={48} color="#ef4444" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: '#ef4444', textAlign: 'center' }}>
+            {error || 'Shipment information not available'}
+          </Text>
+          <Pressable
+            onPress={fetchShipmentData}
+            style={{
+              marginTop: 20,
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              backgroundColor: '#389cfa',
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const handleViewOrderDetails = () => {
-    // Navigate to order details - sẽ implement sau
-    // navigation.navigate('OrderDetail', { orderId: 'some-id' });
+    // Navigate to order details
+    navigation.navigate('OrderDetail', { orderId });
   };
 
   const handleContactSupport = () => {
