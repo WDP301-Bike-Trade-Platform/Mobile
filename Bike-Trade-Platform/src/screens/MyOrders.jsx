@@ -33,7 +33,8 @@ const STATUS_FILTERS = [
   { label: 'Pending', value: OrderStatus.PENDING },
   { label: 'Confirmed', value: OrderStatus.CONFIRMED },
   { label: 'Completed', value: OrderStatus.COMPLETED },
-  { label: 'Cancelled', value: OrderStatus.CANCELLED },
+  { label: 'Cancelled', value: OrderStatus.CANCELLED_BY_SELLER || OrderStatus.CANCELLED_BY_BUYER },
+  
 ];
 
 const MyOrders = ({ navigation }) => {

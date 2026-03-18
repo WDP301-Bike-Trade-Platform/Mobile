@@ -262,6 +262,26 @@ const OrderDetail = ({ route, navigation }) => {
   const meta = order.meta || {};
   const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS.PENDING;
 
+  const totalAmount =
+    Number(meta.totalAmount) ||
+    order.orderDetails?.reduce((sum, item) => sum + decimalToNumber(item.total_price), 0) ||
+    0;
+  const depositAmount = Number(meta.depositAmount) || decimalToNumber(order.deposit_amount) || 0;
+  const remainingAmount = Math.max(totalAmount - depositAmount, 0);
+  const isDepositFlow = !!meta.depositRequired;
+  const isFinalPaid = order.status === 'PAID' || order.status === 'COMPLETED';
+
+  const summaryMainLabel = isDepositFlow
+    ? (isFinalPaid ? 'Total Paid' : 'Amount Due')
+    : 'Total';
+
+  const summaryMainAmount = (() => {
+    if (!isDepositFlow) return totalAmount;
+    if (isFinalPaid) return totalAmount;
+    if (order.status === 'DEPOSITED' || order.status === 'CONFIRMED') return remainingAmount;
+    return depositAmount;
+  })();
+
   // Buyer can pay deposit when PENDING
   const buyerCanPayDeposit = isBuyer && order.status === 'PENDING';
   // Buyer can pay remaining when CONFIRMED
@@ -367,17 +387,20 @@ const OrderDetail = ({ route, navigation }) => {
               {/* Summary */}
               <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
                 <SummaryRow label={`Total (${order.orderDetails.reduce((s, i) => s + i.quantity, 0)} items)`}
-                  value={`đ${formatPrice(meta.totalAmount || order.orderDetails.reduce((s, i) => s + decimalToNumber(i.total_price), 0))}`} />
+                  value={`đ${formatPrice(totalAmount)}`} />
                 {meta.depositRequired && (
-                  <SummaryRow label="Deposit" value={`đ${formatPrice(meta.depositAmount || decimalToNumber(order.deposit_amount))}`} />
+                  <SummaryRow label="Deposit" value={`đ${formatPrice(depositAmount)}`} />
+                )}
+                {meta.depositRequired && (
+                  <SummaryRow label="Remaining" value={`đ${formatPrice(remainingAmount)}`} />
                 )}
                 <View style={{ height: 1, backgroundColor: '#f3f4f6', marginVertical: 8 }} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>
-                    {meta.depositRequired ? 'Amount Due' : 'Total'}
+                    {summaryMainLabel}
                   </Text>
                   <Text style={{ fontSize: 18, fontWeight: '700', color: '#389cfa' }}>
-                    đ{formatPrice(meta.depositAmount || meta.totalAmount || decimalToNumber(order.deposit_amount))}
+                    đ{formatPrice(summaryMainAmount)}
                   </Text>
                 </View>
               </View>

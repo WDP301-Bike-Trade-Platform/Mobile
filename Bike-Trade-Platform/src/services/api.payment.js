@@ -4,30 +4,36 @@ import { instance } from "../lib/axios";
  * Payment API Services
  */
 
-// Tạo payment link cho listing đơn lẻ
-export const createPaymentForListing = async (listingId, paymentStage = 'DEPOSIT') => {
-  try {
-    const response = await instance.post("/payment/create-for-listing", {
-      listingId,
-      paymentStage,
-      platform: 'MOBILE',
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error creating payment for listing:", error);
-    throw error;
+const unwrapApiResponse = (response) => {
+  const payload = response?.data;
+
+  if (payload?.success === false) {
+    const message = payload?.message || payload?.error || 'Request failed';
+    throw new Error(message);
   }
+
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) {
+    return payload.data;
+  }
+
+  return payload;
 };
 
-// Tạo payment link cho order (nhiều items từ cart)
-export const createPaymentForOrder = async (orderId, paymentStage = 'DEPOSIT') => {
+// Tạo payment link cho order
+export const createPaymentForOrder = async (
+  orderId,
+  options = {}
+) => {
   try {
-    const response = await instance.post("/payment/create-for-order", {
+    const { paymentStage, platform = 'MOBILE' } = options;
+    const body = {
       orderId,
-      paymentStage,
-      platform: 'MOBILE',
-    });
-    return response.data;
+      platform,
+      ...(paymentStage ? { paymentStage } : {}),
+    };
+
+    const response = await instance.post("/payment/create-for-order", body);
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error creating payment for order:", error);
     throw error;
@@ -38,7 +44,7 @@ export const createPaymentForOrder = async (orderId, paymentStage = 'DEPOSIT') =
 export const getPaymentInfo = async (orderCode) => {
   try {
     const response = await instance.get(`/payment/info/${orderCode}`);
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error getting payment info:", error);
     throw error;
@@ -52,7 +58,7 @@ export const cancelPayment = async (orderCode, cancellationReason) => {
       orderCode,
       cancellationReason,
     });
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error canceling payment:", error);
     throw error;

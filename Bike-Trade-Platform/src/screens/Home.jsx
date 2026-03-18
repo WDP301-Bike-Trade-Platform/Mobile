@@ -79,25 +79,32 @@ const Home = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await getProducts();
+      const response = await getProducts({ page: 1, limit: 50 });
       console.log("Products response:", response);
       
-      // Handle different response structures
       let productsData = [];
-      
-      if (response?.data && Array.isArray(response.data)) {
-        productsData = response.data;
-      } else if (Array.isArray(response)) {
+
+      if (Array.isArray(response)) {
         productsData = response;
-      } else if (response?.data?.data && Array.isArray(response.data.data)) {
+      } else if (Array.isArray(response?.data)) {
+        productsData = response.data;
+      } else if (Array.isArray(response?.data?.data)) {
         productsData = response.data.data;
+      } else if (Array.isArray(response?.items)) {
+        productsData = response.items;
+      } else if (Array.isArray(response?.data?.items)) {
+        productsData = response.data.items;
       }
-      
-      // Filter to only show APPROVED products
-      const approvedProducts = productsData.filter((product) => product.status === "APPROVED");
-      
-      setAllProducts(approvedProducts);
-      setFilteredBikes(approvedProducts);
+
+      const normalizedProducts = productsData.filter(Boolean);
+      const statusFilteredProducts = normalizedProducts.filter((product) => {
+        const status = (product?.status || product?.listing?.status || '').toUpperCase();
+        if (!status) return false;
+        return status === 'APPROVED' || status === 'ACTIVE';
+      });
+
+      setAllProducts(statusFilteredProducts);
+      setFilteredBikes(statusFilteredProducts);
     } catch (error) {
       console.log("Error fetching products:", error.message);
       console.log("API Base URL:", process.env.EXPO_PUBLIC_API);

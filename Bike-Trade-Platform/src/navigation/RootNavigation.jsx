@@ -36,6 +36,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
 import * as Linking from 'expo-linking';
+import InspectorProfile from "../screens/inspector/InspectorProfile";
 
 const Stack = createStackNavigator();
 const Tabs = createBottomTabNavigator();
@@ -47,6 +48,7 @@ const linking = {
     'exp://192.168.2.4:8081/--/',
     'exp://10.87.46.68:8081/--/', 
     'exp://192.168.2.6:8081/--/',
+    'exp://192.168.2.2:8081/--/',
     'exp://192.168.100.150:8081/--/',// Thay IP của bạn
     Linking.createURL('/'),
   ],

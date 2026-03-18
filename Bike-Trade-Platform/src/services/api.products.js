@@ -1,19 +1,18 @@
 import { instance } from "../lib/axios";
 
-export const getProducts = async () => {
+export const getProducts = async (params = {}) => {
   try {
-    // Try /listings first
-    const response = await instance.get("/listingProduct?status=APPROVED");
+    const response = await instance.get("/listingProduct", { params });
     return response.data;
   } catch (error) {
     if (error?.response?.status === 404) {
-      console.log("Endpoint /listings not found, trying /products");
+      console.log("Endpoint /listingProduct not found, trying /products");
       try {
-        const response = await instance.get("/products");
+        const response = await instance.get("/products", { params });
         return response.data;
       } catch (error2) {
         console.log("Endpoint /products not found, trying /vehicles");
-        const response = await instance.get("/vehicles");
+        const response = await instance.get("/vehicles", { params });
         return response.data;
       }
     }

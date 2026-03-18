@@ -4,11 +4,26 @@ import { instance } from "../lib/axios";
  * Order API Services
  */
 
+const unwrapApiResponse = (response) => {
+  const payload = response?.data;
+
+  if (payload?.success === false) {
+    const message = payload?.message || payload?.error || 'Request failed';
+    throw new Error(message);
+  }
+
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) {
+    return payload.data;
+  }
+
+  return payload;
+};
+
 // Tạo order mới từ listing
 export const createOrder = async (orderData) => {
   try {
     const response = await instance.post("/orders", orderData);
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error creating order:", error);
     throw error;
@@ -19,7 +34,7 @@ export const createOrder = async (orderData) => {
 export const checkoutCart = async (checkoutData) => {
   try {
     const response = await instance.post("/orders/checkout-cart", checkoutData);
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error checking out cart:", error);
     throw error;
@@ -31,7 +46,7 @@ export const getMyOrders = async (status) => {
   try {
     const params = status ? { status } : {};
     const response = await instance.get("/orders/my-orders", { params });
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error getting my orders:", error);
     throw error;
@@ -43,7 +58,7 @@ export const getSellerOrders = async (status) => {
   try {
     const params = status ? { status } : {};
     const response = await instance.get("/orders/seller-orders", { params });
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error getting seller orders:", error);
     throw error;
@@ -54,7 +69,7 @@ export const getSellerOrders = async (status) => {
 export const getOrderById = async (orderId) => {
   try {
     const response = await instance.get(`/orders/${orderId}`);
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error getting order by ID:", error);
     throw error;
@@ -66,13 +81,12 @@ export const confirmOrder = async (orderId, note) => {
   try {
     const encodedOrderId = encodeURIComponent(orderId);
     const url = `/orders/${encodedOrderId}/confirm`;
-    console.log('🔵 Calling confirmOrder:', { orderId, encodedOrderId, url, note });
     const response = await instance.patch(url, {
       note,
     });
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
-    console.error("❌ Error confirming order:", error.message, "URL:", `/orders/${orderId}/confirm`, "Status:", error.response?.status);
+    console.error("Error confirming order:", error);
     throw error;
   }
 };
@@ -83,7 +97,7 @@ export const cancelOrder = async (orderId, reason) => {
     const response = await instance.patch(`/orders/${orderId}/buyer-cancel`, {
       reason,
     });
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error canceling order:", error);
     throw error;
@@ -94,7 +108,7 @@ export const cancelOrder = async (orderId, reason) => {
 export const completeOrder = async (orderId) => {
   try {
     const response = await instance.patch(`/orders/${orderId}/complete`);
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error completing order:", error);
     throw error;
@@ -106,13 +120,12 @@ export const sellerConfirmOrder = async (orderId) => {
   try {
     const encodedOrderId = encodeURIComponent(orderId);
     const url = `/orders/${encodedOrderId}/confirm`;
-    console.log('🟢 Calling sellerConfirmOrder:', { orderId, encodedOrderId, url });
     const response = await instance.patch(url, {
       note: 'Confirmed by seller',
     });
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
-    console.error("❌ Error confirming order:", error.message, "URL:", `/orders/${orderId}/confirm`, "Status:", error.response?.status);
+    console.error("Error confirming order:", error);
     throw error;
   }
 };
@@ -123,7 +136,7 @@ export const sellerRejectOrder = async (orderId, reason) => {
     const response = await instance.patch(`/orders/${orderId}/seller-reject`, {
       reason,
     });
-    return response.data;
+    return unwrapApiResponse(response);
   } catch (error) {
     console.error("Error seller rejecting order:", error);
     throw error;
@@ -140,7 +153,7 @@ export const OrderStatus = {
   CONFIRMED: "CONFIRMED",
   PAID: "PAID",
   FORFEITED: "FORFEITED",
-  CANCELLED: "CANCELLED",
+  CANCELLED_BY_BUYER: "CANCELLED_BY_BUYER",
   CANCELLED_BY_SELLER: "CANCELLED_BY_SELLER",
   COMPLETED: "COMPLETED",
 };

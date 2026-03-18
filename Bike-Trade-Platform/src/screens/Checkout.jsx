@@ -18,6 +18,8 @@ import { getMyAddresses, getDefaultAddress } from '../services/api.address';
 import HeaderBar from '../component/HeaderBar';
 import { formatPrice } from '../utils/formatters';
 
+const DEPOSIT_RATE = 0.1;
+
 const Checkout = ({ route, navigation }) => {
   const { listing, cartItems, totalAmount } = route.params;
   const [note, setNote] = useState('');
@@ -27,6 +29,12 @@ const Checkout = ({ route, navigation }) => {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('PAYOS');
+  const [isDepositPayment, setIsDepositPayment] = useState(true);
+
+  const orderTotal = totalAmount || listing?.price || 0;
+  const depositAmount = Math.round(orderTotal * DEPOSIT_RATE * 100) / 100;
+  const payableNow =
+    paymentMethod === 'PAYOS' && isDepositPayment ? depositAmount : orderTotal;
 
   useEffect(() => {
     fetchAddresses();
@@ -70,21 +78,24 @@ const Checkout = ({ route, navigation }) => {
       // Check if checkout from cart or single listing
       if (cartItems && cartItems.length > 0) {
         // Checkout from cart
+        const useDeposit = paymentMethod === 'PAYOS' && isDepositPayment;
         const checkoutData = {
           paymentMethod,
+          isDeposit: useDeposit,
           shippingAddressId: selectedAddress.address_id,
           deliveryPhone: selectedAddress.phone || undefined,
         };
 
-        const result = await checkoutCart(checkoutData);
-        const orders = result?.data || result;
+        const orders = await checkoutCart(checkoutData);
 
         if (Array.isArray(orders) && orders.length > 0) {
           if (paymentMethod === 'PAYOS' && orders.length === 1) {
             // Single order with PAYOS - proceed to payment
             const orderId = orders[0].order_id;
-            const response = await createPaymentForOrder(orderId);
-            const paymentData = response?.data || response;
+            const paymentData = await createPaymentForOrder(orderId, {
+              paymentStage: useDeposit ? 'DEPOSIT' : undefined,
+              platform: 'MOBILE',
+            });
 
             if (paymentData.paymentLink) {
               await Linking.openURL(paymentData.paymentLink);
@@ -108,20 +119,23 @@ const Checkout = ({ route, navigation }) => {
         }
       } else if (listing) {
         // Checkout single listing - create order first
+        const useDeposit = paymentMethod === 'PAYOS' && isDepositPayment;
         const orderData = {
           listingId: listing.listing_id,
           paymentMethod,
+          isDeposit: useDeposit,
           shippingAddressId: selectedAddress.address_id,
           deliveryPhone: selectedAddress.phone || undefined,
           note: note || undefined,
         };
 
-        const orderResult = await createOrder(orderData);
-        const order = orderResult?.data || orderResult;
+        const order = await createOrder(orderData);
 
         if (paymentMethod === 'PAYOS' && order?.order_id) {
-          const response = await createPaymentForOrder(order.order_id);
-          const paymentData = response?.data || response;
+          const paymentData = await createPaymentForOrder(order.order_id, {
+            paymentStage: useDeposit ? 'DEPOSIT' : undefined,
+            platform: 'MOBILE',
+          });
 
           if (paymentData.paymentLink) {
             await Linking.openURL(paymentData.paymentLink);
@@ -144,7 +158,9 @@ const Checkout = ({ route, navigation }) => {
     } catch (error) {
       console.error('Error during checkout:', error);
       const errMsg = error.response?.data?.message;
-      const message = Array.isArray(errMsg) ? errMsg.join('\n') : (errMsg || 'Unable to complete the order');
+      const message = Array.isArray(errMsg)
+        ? errMsg.join('\n')
+        : (errMsg || error.message || 'Unable to complete the order');
       Alert.alert('Error', message);
     } finally {
       setLoading(false);
@@ -258,7 +274,12 @@ const Checkout = ({ route, navigation }) => {
           ].map((method) => (
             <Pressable
               key={method.key}
-              onPress={() => setPaymentMethod(method.key)}
+              onPress={() => {
+                setPaymentMethod(method.key);
+                if (method.key === 'COD') {
+                  setIsDepositPayment(false);
+                }
+              }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -296,7 +317,69 @@ const Checkout = ({ route, navigation }) => {
               </View>
             </Pressable>
           ))}
+
+        
         </View>
+        {paymentMethod === 'PAYOS' && (
+         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
+              Payment Options
+            </Text>
+            <View style={{ marginTop: 8, gap: 8 }}>
+              <Pressable
+                onPress={() => setIsDepositPayment(true)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderWidth: 1,
+                  borderColor: isDepositPayment ? '#389cfa' : '#e5e7eb',
+                  backgroundColor: isDepositPayment ? '#f0f9ff' : '#fff',
+                  borderRadius: 10,
+                  padding: 12,
+                }}
+              >
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
+                    Pay 10% deposit now
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                    Pay now: đ{formatPrice(depositAmount)}
+                  </Text>
+                </View>
+                {isDepositPayment && (
+                  <MaterialCommunityIcons name="check-circle" size={22} color="#389cfa" />
+                )}
+              </Pressable>
+
+              <Pressable
+                onPress={() => setIsDepositPayment(false)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderWidth: 1,
+                  borderColor: !isDepositPayment ? '#389cfa' : '#e5e7eb',
+                  backgroundColor: !isDepositPayment ? '#f0f9ff' : '#fff',
+                  borderRadius: 10,
+                  padding: 12,
+                }}
+              >
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
+                    Pay full amount now
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                    Pay now: đ{formatPrice(orderTotal)}
+                  </Text>
+                </View>
+                {!isDepositPayment && (
+                  <MaterialCommunityIcons name="check-circle" size={22} color="#389cfa" />
+                )}
+              </Pressable>
+            </View>
+          </View>
+          )}
 
         {/* Note */}
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
@@ -325,12 +408,32 @@ const Checkout = ({ route, navigation }) => {
 
         {/* Total */}
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          {paymentMethod === 'PAYOS' && isDepositPayment ? (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>
+                  Order total
+                </Text>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>
+                  đ{formatPrice(orderTotal)}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>
+                  Deposit (10%)
+                </Text>
+                <Text style={{ fontSize: 14, color: '#111827', fontWeight: '600' }}>
+                  đ{formatPrice(depositAmount)}
+                </Text>
+              </View>
+            </>
+          ) : null}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
-              Total
+              Pay now
             </Text>
             <Text style={{ fontSize: 20, fontWeight: '700', color: '#389cfa' }}>
-              đ{formatPrice(totalAmount || listing?.price || 0)}
+              đ{formatPrice(payableNow)}
             </Text>
           </View>
         </View>
