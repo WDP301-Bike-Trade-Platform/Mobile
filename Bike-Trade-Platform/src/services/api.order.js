@@ -64,12 +64,15 @@ export const getOrderById = async (orderId) => {
 // Seller xác nhận đơn hàng
 export const confirmOrder = async (orderId, note) => {
   try {
-    const response = await instance.patch(`/orders/${orderId}/confirm`, {
+    const encodedOrderId = encodeURIComponent(orderId);
+    const url = `/orders/${encodedOrderId}/confirm`;
+    console.log('🔵 Calling confirmOrder:', { orderId, encodedOrderId, url, note });
+    const response = await instance.patch(url, {
       note,
     });
     return response.data;
   } catch (error) {
-    console.error("Error confirming order:", error);
+    console.error("❌ Error confirming order:", error.message, "URL:", `/orders/${orderId}/confirm`, "Status:", error.response?.status);
     throw error;
   }
 };
@@ -77,7 +80,7 @@ export const confirmOrder = async (orderId, note) => {
 // Buyer hủy đơn hàng
 export const cancelOrder = async (orderId, reason) => {
   try {
-    const response = await instance.patch(`/orders/${orderId}/cancel`, {
+    const response = await instance.patch(`/orders/${orderId}/buyer-cancel`, {
       reason,
     });
     return response.data;
@@ -101,10 +104,15 @@ export const completeOrder = async (orderId) => {
 // Seller xác nhận đơn hàng (cho escrow)
 export const sellerConfirmOrder = async (orderId) => {
   try {
-    const response = await instance.patch(`/orders/${orderId}/seller-confirm`);
+    const encodedOrderId = encodeURIComponent(orderId);
+    const url = `/orders/${encodedOrderId}/confirm`;
+    console.log('🟢 Calling sellerConfirmOrder:', { orderId, encodedOrderId, url });
+    const response = await instance.patch(url, {
+      note: 'Confirmed by seller',
+    });
     return response.data;
   } catch (error) {
-    console.error("Error seller confirming order:", error);
+    console.error("❌ Error confirming order:", error.message, "URL:", `/orders/${orderId}/confirm`, "Status:", error.response?.status);
     throw error;
   }
 };

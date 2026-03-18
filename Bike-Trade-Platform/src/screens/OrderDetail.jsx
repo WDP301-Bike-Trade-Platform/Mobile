@@ -44,6 +44,7 @@ const OrderDetail = ({ route, navigation }) => {
   const { orderId } = route.params;
   const { user } = useAppContext();
   const currentUserId = user?.user_id || user?.userId || user?.id;
+  console.log('📋 OrderDetail loaded:', { orderId, userId: currentUserId });
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -168,11 +169,12 @@ const OrderDetail = ({ route, navigation }) => {
         onPress: async () => {
           try {
             setProcessingAction(true);
+            console.log('👉 handleSellerConfirm called with orderId:', orderId);
             await sellerConfirmOrder(orderId);
             Alert.alert('Success', 'Order confirmed. Buyer has 3 minutes to pay the remaining amount.');
             fetchOrderDetail();
           } catch (error) {
-            console.error('Error confirming order:', error);
+            console.error('❌ handleSellerConfirm error:', error.message);
             Alert.alert('Error', 'Unable to confirm order');
           } finally {
             setProcessingAction(false);
@@ -598,6 +600,26 @@ const OrderDetail = ({ route, navigation }) => {
                 Confirm receipt and complete order
               </Text>
             </View>
+          )}
+
+          {/* Track Shipment - Show when order is paid or later */}
+          {(order.status === 'PAID' || order.status === 'COMPLETED') && (
+            <Pressable
+              onPress={() => navigation.navigate('ShipmentTracking', { orderId })}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingVertical: 14,
+                borderRadius: 12,
+                backgroundColor: '#389cfa',
+                gap: 8,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <MaterialCommunityIcons name="truck-delivery" size={20} color="#fff" />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Track Shipment</Text>
+            </Pressable>
           )}
 
           {/* Buyer: Cancel (PENDING) - only if not escrow */}

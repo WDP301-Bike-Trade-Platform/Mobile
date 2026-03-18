@@ -13,6 +13,9 @@ export const instance = axios.create({
 instance.interceptors.request.use(
   async (config) => {
     try {
+      // Log the request URL for debugging
+      console.log(`📡 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+      
       // Don't add token to auth endpoints (login, register, verify-otp, refresh-token)
       const authEndpoints = ["/auth/login", "/auth/register", "/auth/verify-otp", "/auth/refresh-token"];
       const isAuthEndpoint = authEndpoints.some(endpoint => config.url?.includes(endpoint));

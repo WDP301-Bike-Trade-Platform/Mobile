@@ -30,6 +30,8 @@ import MyInspections from "../screens/MyInspections";
 import InspectorDashboard from "../screens/inspector/InspectorDashboard";
 import InspectionDetail from "../screens/inspector/InspectionDetail";
 import ShipmentTracking from "../screens/ShipmentTracking";
+import BuyerShipments from "../screens/BuyerShipments";
+import SellerShipmentManagement from "../screens/SellerShipmentManagement";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
@@ -280,6 +282,8 @@ const RootNavigation = () => {
             <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancel} />
             <Stack.Screen name="ShipmentTracking" component={ShipmentTracking} />
+            <Stack.Screen name="BuyerShipments" component={BuyerShipments} />
+            <Stack.Screen name="SellerShipmentManagement" component={SellerShipmentManagement} />
           </>
         )}
       </Stack.Navigator>

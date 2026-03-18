@@ -309,8 +309,8 @@ const Profile = () => {
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
           <MenuItem
             icon="truck-delivery"
-            label="Track Shipment"
-            onPress={() => navigation.navigate("ShipmentTracking")}
+            label="My Shipments"
+            onPress={() => navigation.navigate("BuyerShipments")}
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
           <MenuItem
