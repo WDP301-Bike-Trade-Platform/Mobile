@@ -51,22 +51,32 @@ const ShipmentTracking = ({ navigation, route }) => {
   };
 
   const transformTrackings = (trackings) => {
-    // Sort trackings by trackedAt descending (latest first)
-    const sortedTrackings = trackings.sort((a, b) => new Date(b.trackedAt) - new Date(a.trackedAt));
+    if (!trackings || trackings.length === 0) {
+      return [];
+    }
     
-    return sortedTrackings.map((tracking, index) => ({
-      status: tracking.status.replace('_', ' '),
-      description: tracking.description || `${tracking.status} - ${tracking.location || ''}`,
-      time: new Date(tracking.trackedAt).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }),
-      isActive: index === 0, // First item is active
-      icon: getStatusIcon(tracking.status),
-    }));
+    // Sort trackings by trackedAt descending (latest first)
+    const sortedTrackings = [...trackings].sort((a, b) => new Date(b.trackedAt) - new Date(a.trackedAt));
+    
+    return sortedTrackings.map((tracking, index) => {
+      const statusLabel = tracking.status.replace(/_/g, ' ');
+      const location = tracking.location || '';
+      const description = tracking.description || `${statusLabel}${location ? ` - ${location}` : ''}`;
+      
+      return {
+        status: statusLabel,
+        description: description.trim(),
+        time: new Date(tracking.trackedAt).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }),
+        isActive: index === 0, // First item is active
+        icon: getStatusIcon(tracking.status),
+      };
+    });
   };
 
   const getStatusIcon = (status) => {
@@ -97,7 +107,7 @@ const ShipmentTracking = ({ navigation, route }) => {
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8', justifyContent: 'center', alignItems: 'center' }}>
         <HeaderBar title="Track Shipment" onBack={() => navigation.goBack()} />
         <ActivityIndicator size="large" color="#389cfa" />
-        <Text style={{ marginTop: 16, fontSize: 16, color: '#6b7280' }}>Loading shipment details...</Text>
+        <Text style={{ marginTop: 16, fontSize: 16, color: '#6b7280' }}>Loading tracking details...</Text>
       </SafeAreaView>
     );
   }
@@ -109,7 +119,7 @@ const ShipmentTracking = ({ navigation, route }) => {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <MaterialCommunityIcons name="alert-circle" size={48} color="#ef4444" />
           <Text style={{ marginTop: 16, fontSize: 16, color: '#ef4444', textAlign: 'center' }}>
-            {error || 'Shipment information not available'}
+            {error || 'Tracking information unavailable'}
           </Text>
           <Pressable
             onPress={fetchShipmentData}
@@ -121,7 +131,7 @@ const ShipmentTracking = ({ navigation, route }) => {
               borderRadius: 8,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -140,13 +150,13 @@ const ShipmentTracking = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8' }}>
-      <HeaderBar title="Track Shipment" onBack={() => navigation.goBack()} />
+      <HeaderBar title="Shipment Tracking" onBack={() => navigation.goBack()} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
       >
-        {/* Order Summary Card */}
+        {/* Shipment Summary Card */}
         <View style={{
           backgroundColor: '#fff',
           borderRadius: 12,
@@ -174,7 +184,7 @@ const ShipmentTracking = ({ navigation, route }) => {
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
               }}>
-                Estimated Delivery
+                Est. Delivery Date
               </Text>
               <Text style={{
                 fontSize: 24,
@@ -216,7 +226,7 @@ const ShipmentTracking = ({ navigation, route }) => {
               </View>
               <View>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
-                  Tracking Number
+                  Tracking #
                 </Text>
                 <Text style={{ fontSize: 12, color: '#6b7280' }}>
                   {shipmentData.trackingNumber}
@@ -237,7 +247,7 @@ const ShipmentTracking = ({ navigation, route }) => {
               </View>
               <View>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
-                  Courier
+                  Carrier
                 </Text>
                 <Text style={{ fontSize: 12, color: '#6b7280' }}>
                   {shipmentData.courier}
@@ -247,7 +257,7 @@ const ShipmentTracking = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Shipping Updates Timeline */}
+        {/* Tracking Timeline */}
         <View style={{ marginBottom: 20 }}>
           <Text style={{
             fontSize: 16,
@@ -255,7 +265,7 @@ const ShipmentTracking = ({ navigation, route }) => {
             color: '#111827',
             marginBottom: 20,
           }}>
-            Shipping Updates
+            Tracking Updates
           </Text>
 
           <View style={{ position: 'relative', paddingLeft: 20 }}>
@@ -361,7 +371,7 @@ const ShipmentTracking = ({ navigation, route }) => {
               fontWeight: '700',
               color: '#fff',
             }}>
-              View Order Details
+              Order Details
             </Text>
           </Pressable>
 
@@ -391,7 +401,7 @@ const ShipmentTracking = ({ navigation, route }) => {
               fontWeight: '700',
               color: '#111827',
             }}>
-              Contact Support
+              Support
             </Text>
           </Pressable>
         </View>

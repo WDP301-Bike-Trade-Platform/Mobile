@@ -32,6 +32,7 @@ import InspectionDetail from "../screens/inspector/InspectionDetail";
 import ShipmentTracking from "../screens/ShipmentTracking";
 import BuyerShipments from "../screens/BuyerShipments";
 import SellerShipmentManagement from "../screens/SellerShipmentManagement";
+import ShipmentStatusUpdate from "../screens/ShipmentStatusUpdate";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppContext } from "../provider/AppProvider";
 import { View, Pressable, ActivityIndicator } from "react-native";
@@ -286,6 +287,7 @@ const RootNavigation = () => {
             <Stack.Screen name="ShipmentTracking" component={ShipmentTracking} />
             <Stack.Screen name="BuyerShipments" component={BuyerShipments} />
             <Stack.Screen name="SellerShipmentManagement" component={SellerShipmentManagement} />
+            <Stack.Screen name="ShipmentStatusUpdate" component={ShipmentStatusUpdate} />
           </>
         )}
       </Stack.Navigator>

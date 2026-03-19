@@ -18,7 +18,6 @@ import {
   getMyShipments,
   confirmShipmentReady,
   updateShipmentStatus,
-  cancelShipment,
   getStatusLabel,
   getStatusColor,
 } from '../services/api.shipment';
@@ -44,12 +43,12 @@ const SellerShipmentManagement = ({ navigation }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const statuses = [
-    { key: 'PENDING', label: 'Chờ xử lý', color: '#FCD34D' },
-    { key: 'PICKED_UP', label: 'Đã lấy hàng', color: '#A78BFA' },
-    { key: 'IN_TRANSIT', label: 'Đang vận chuyển', color: '#60A5FA' },
-    { key: 'OUT_FOR_DELIVERY', label: 'Sắp giao', color: '#34D399' },
-    { key: 'DELIVERED', label: 'Đã giao', color: '#22C55E' },
-    { key: 'FAILED', label: 'Giao thất bại', color: '#EF4444' },
+    { key: 'PENDING', label: 'Pending', color: '#FCD34D' },
+    { key: 'PICKED_UP', label: 'Picked Up', color: '#A78BFA' },
+    { key: 'IN_TRANSIT', label: 'In Transit', color: '#60A5FA' },
+    { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', color: '#34D399' },
+    { key: 'DELIVERED', label: 'Delivered', color: '#22C55E' },
+    { key: 'FAILED', label: 'Failed', color: '#EF4444' },
   ];
 
   useEffect(() => {
@@ -69,7 +68,7 @@ const SellerShipmentManagement = ({ navigation }) => {
       setError(null);
     } catch (err) {
       console.error('Error fetching shipments:', err);
-      setError('Không thể tải danh sách vận chuyển');
+      setError('Unable to load shipment list');
     } finally {
       setLoading(false);
     }
@@ -107,11 +106,11 @@ const SellerShipmentManagement = ({ navigation }) => {
     try {
       setSubmitting(true);
       await confirmShipmentReady(selectedShipment.shipmentId);
-      Alert.alert('Thành công', 'Đã xác nhận chuẩn bị hàng. Hàng sẽ được giao cho đơn vị vận chuyển');
+      Alert.alert('Success', 'Confirmed preparation. Shipment is ready for pickup');
       setModalVisible(false);
       await fetchShipments();
     } catch (err) {
-      Alert.alert('Lỗi', err.message || 'Xác nhận thất bại');
+      Alert.alert('Error', err.message || 'Confirmation failed');
     } finally {
       setSubmitting(false);
     }
@@ -119,7 +118,7 @@ const SellerShipmentManagement = ({ navigation }) => {
 
   const handleUpdateStatus = async () => {
     if (!selectedShipment || !formData.status) {
-      Alert.alert('Lỗi', 'Vui lòng chọn trạng thái');
+      Alert.alert('Error', 'Please select a status');
       return;
     }
 
@@ -130,46 +129,17 @@ const SellerShipmentManagement = ({ navigation }) => {
         location: formData.location,
         description: formData.description,
       });
-      Alert.alert('Thành công', 'Cập nhật trạng thái vận chuyển thành công');
+      Alert.alert('Success', 'Shipment status updated successfully');
       setModalVisible(false);
       await fetchShipments();
     } catch (err) {
-      Alert.alert('Lỗi', err.message || 'Cập nhật thất bại');
+      Alert.alert('Error', err.message || 'Update failed');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCancelShipment = async () => {
-    if (!selectedShipment) return;
 
-    Alert.alert(
-      'Xác nhận hủy',
-      'Bạn có chắc muốn hủy vận chuyển này?',
-      [
-        { text: 'Hủy bỏ', onPress: () => {} },
-        {
-          text: 'Hủy vận chuyển',
-          onPress: async () => {
-            try {
-              setSubmitting(true);
-              await cancelShipment(selectedShipment.shipmentId, {
-                reason: formData.reason || 'Người bán hủy',
-              });
-              Alert.alert('Thành công', 'Vận chuyển đã bị hủy');
-              setModalVisible(false);
-              await fetchShipments();
-            } catch (err) {
-              Alert.alert('Lỗi', err.message || 'Hủy thất bại');
-            } finally {
-              setSubmitting(false);
-            }
-          },
-          style: 'destructive',
-        },
-      ]
-    );
-  };
 
   const renderShipmentCard = (shipment) => (
     <Pressable
@@ -187,10 +157,10 @@ const SellerShipmentManagement = ({ navigation }) => {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-            Vận đơn: {shipment.trackingNumber}
+            Tracking #: {shipment.trackingNumber}
           </Text>
           <Text style={{ fontSize: 13, color: '#111827' }}>
-            Mã đơn: {shipment.orderId?.slice(0, 12)}
+            Order: {shipment.orderId?.slice(0, 12)}
           </Text>
         </View>
         <View style={{ alignItems: 'center', gap: 8 }}>
@@ -207,7 +177,7 @@ const SellerShipmentManagement = ({ navigation }) => {
             </Text>
           </View>
           <Text style={{ fontSize: 10, color: '#6b7280' }}>
-            ₹{shipment.shippingFee?.toLocaleString('vi-VN') || '0'}
+            ₹{shipment.shippingFee?.toLocaleString('en-US') || '0'}
           </Text>
         </View>
       </View>
@@ -220,34 +190,19 @@ const SellerShipmentManagement = ({ navigation }) => {
 
       {/* Actions */}
       {shipment.status === 'PENDING' && (
-        <View style={{ gap: 8 }}>
-          <Pressable
-            onPress={() => handleOpenModal(shipment, 'confirm')}
-            style={({ pressed }) => ({
-              backgroundColor: '#22C55E',
-              paddingVertical: 10,
-              borderRadius: 8,
-              opacity: pressed ? 0.8 : 1,
-            })}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center', fontSize: 12 }}>
-              ✓ Xác nhận đã chuẩn bị
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => handleOpenModal(shipment, 'cancel')}
-            style={({ pressed }) => ({
-              backgroundColor: '#EF4444',
-              paddingVertical: 10,
-              borderRadius: 8,
-              opacity: pressed ? 0.8 : 1,
-            })}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center', fontSize: 12 }}>
-              ✕ Hủy
-            </Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => handleOpenModal(shipment, 'confirm')}
+          style={({ pressed }) => ({
+            backgroundColor: '#22C55E',
+            paddingVertical: 10,
+            borderRadius: 8,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center', fontSize: 12 }}>
+            ✓ Xác nhận đã chuẩn bị
+          </Text>
+        </Pressable>
       )}
 
       {shipment.status !== 'DELIVERED' && shipment.status !== 'CANCELLED' && shipment.status !== 'PENDING' && (
@@ -269,9 +224,9 @@ const SellerShipmentManagement = ({ navigation }) => {
       {/* Estimated Delivery */}
       {shipment.estimatedDelivery && (
         <View style={{ marginTop: 12, backgroundColor: '#f3f4f6', padding: 8, borderRadius: 6 }}>
-          <Text style={{ fontSize: 10, color: '#6b7280' }}>Dự kiến giao</Text>
+          <Text style={{ fontSize: 10, color: '#6b7280' }}>Est. Delivery</Text>
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#389cfa' }}>
-            {new Date(shipment.estimatedDelivery).toLocaleDateString('vi-VN')}
+            {new Date(shipment.estimatedDelivery).toLocaleDateString('en-US')}
           </Text>
         </View>
       )}
@@ -281,7 +236,7 @@ const SellerShipmentManagement = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8' }}>
-        <HeaderBar title="Quản lý vận chuyển" onBack={() => navigation.goBack()} />
+      <HeaderBar title="Shipment Management" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#389cfa" />
         </View>
@@ -314,7 +269,29 @@ const SellerShipmentManagement = ({ navigation }) => {
           </View>
         )}
 
-        {/* Filter Tabs */}
+        {/* Action Button - Go to Status Update Page */}
+        <Pressable
+          onPress={() => navigation.navigate('ShipmentStatusUpdate')}
+          style={({ pressed }) => ({
+            backgroundColor: '#10b981',
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <MaterialCommunityIcons name="pencil-box-outline" size={20} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>
+            Update Status Page
+          </Text>
+        </Pressable>
+
+        {/* Status Filters */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -358,7 +335,7 @@ const SellerShipmentManagement = ({ navigation }) => {
           <View style={{ alignItems: 'center', paddingVertical: 40 }}>
             <MaterialCommunityIcons name="package-variant" size={48} color="#cbd5e1" />
             <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 12 }}>
-              Không có vận chuyển nào
+              No shipments
             </Text>
           </View>
         )}
@@ -387,10 +364,8 @@ const SellerShipmentManagement = ({ navigation }) => {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
                   {actionType === 'confirm'
-                    ? 'Xác nhận chuẩn bị'
-                    : actionType === 'cancel'
-                    ? 'Hủy vận chuyển'
-                    : 'Cập nhật trạng thái'}
+                  ? 'Confirm Ready'
+                  : 'Update Status'}
                 </Text>
                 <Pressable onPress={() => setModalVisible(false)}>
                   <MaterialCommunityIcons name="close" size={24} color="#6b7280" />
@@ -408,7 +383,7 @@ const SellerShipmentManagement = ({ navigation }) => {
                       marginBottom: 16,
                     }}
                   >
-                    <Text style={{ fontSize: 11, color: '#6b7280' }}>Vận đơn</Text>
+                    <Text style={{ fontSize: 11, color: '#6b7280' }}>Tracking #</Text>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>
                       {selectedShipment.trackingNumber}
                     </Text>
@@ -419,7 +394,7 @@ const SellerShipmentManagement = ({ navigation }) => {
                 {actionType === 'update' && (
                   <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827', marginBottom: 8 }}>
-                      Chọn trạng thái *
+                      Select Status *
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ gap: 8 }}>
                       {statuses.map((status) => (
@@ -457,10 +432,10 @@ const SellerShipmentManagement = ({ navigation }) => {
                 {actionType === 'update' && (
                   <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827', marginBottom: 8 }}>
-                      Vị trí (tùy chọn)
+                      Location (Optional)
                     </Text>
                     <TextInput
-                      placeholder="VD: Hà Nội, TP.HCM"
+                      placeholder="E.g.: Hanoi, HCMC"
                       placeholderTextColor="#a3a3a3"
                       value={formData.location}
                       onChangeText={(text) =>
@@ -482,10 +457,10 @@ const SellerShipmentManagement = ({ navigation }) => {
                 {actionType === 'update' && (
                   <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827', marginBottom: 8 }}>
-                      Mô tả cập nhật (tùy chọn)
+                      Description (Optional)
                     </Text>
                     <TextInput
-                      placeholder="Nhập mô tả chi tiết"
+                      placeholder="Enter tracking details"
                       placeholderTextColor="#a3a3a3"
                       value={formData.description}
                       onChangeText={(text) =>
@@ -506,33 +481,7 @@ const SellerShipmentManagement = ({ navigation }) => {
                   </View>
                 )}
 
-                {/* Reason Input (for cancel) */}
-                {actionType === 'cancel' && (
-                  <View style={{ marginBottom: 16 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827', marginBottom: 8 }}>
-                      Lý do hủy (tùy chọn)
-                    </Text>
-                    <TextInput
-                      placeholder="Nhập lý do hủy vận chuyển"
-                      placeholderTextColor="#a3a3a3"
-                      value={formData.reason}
-                      onChangeText={(text) =>
-                        setFormData({ ...formData, reason: text })
-                      }
-                      multiline
-                      numberOfLines={3}
-                      style={{
-                        borderWidth: 1,
-                        borderColor: '#e5e7eb',
-                        borderRadius: 8,
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        fontSize: 12,
-                        textAlignVertical: 'top',
-                      }}
-                    />
-                  </View>
-                )}
+
 
                 {/* Confirm Message (for confirm) */}
                 {actionType === 'confirm' && (
@@ -545,11 +494,12 @@ const SellerShipmentManagement = ({ navigation }) => {
                     }}
                   >
                     <Text style={{ fontSize: 12, color: '#0284C7' }}>
-                      Bạn sắp xác nhận đã chuẩn bị hàng. Hàng sẽ được đánh dấu là
-                      "Đã lấy" và sẵn sàng để giao cho đơn vị vận chuyển.
+                      Confirming preparation will mark this shipment as ready for carrier pickup.
                     </Text>
                   </View>
                 )}
+
+                {/* Success Message (for cancel removed - no longer supported) */}
 
                 {/* Action Buttons */}
                 <View style={{ gap: 8, marginTop: 20 }}>
@@ -558,10 +508,9 @@ const SellerShipmentManagement = ({ navigation }) => {
                     onPress={() => {
                       if (actionType === 'confirm') handleConfirmReady();
                       else if (actionType === 'update') handleUpdateStatus();
-                      else if (actionType === 'cancel') handleCancelShipment();
                     }}
                     style={({pressed}) => ({
-                      backgroundColor: actionType === 'cancel' ? '#EF4444' : '#22C55E',
+                      backgroundColor: '#22C55E',
                       paddingVertical: 12,
                       borderRadius: 8,
                       opacity: pressed || submitting ? 0.8 : 1,
@@ -569,12 +518,10 @@ const SellerShipmentManagement = ({ navigation }) => {
                   >
                     <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
                       {submitting
-                        ? 'Đang xử lý...'
+                        ? 'Processing...'
                         : actionType === 'confirm'
-                        ? 'Xác nhận'
-                        : actionType === 'cancel'
-                        ? 'Hủy vận chuyển'
-                        : 'Cập nhật'}
+                        ? 'Confirm'
+                        : 'Update'}
                     </Text>
                   </Pressable>
 
@@ -589,7 +536,7 @@ const SellerShipmentManagement = ({ navigation }) => {
                     })}
                   >
                     <Text style={{ color: '#6b7280', fontWeight: '600', textAlign: 'center' }}>
-                      Hủy bỏ
+                      Cancel
                     </Text>
                   </Pressable>
                 </View>
