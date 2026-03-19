@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  FlatList,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,6 +26,13 @@ const EditProfile = () => {
   const [submitting, setSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [avatarUri, setAvatarUri] = useState(null);
+
+  // Bank related states
+  const [banks, setBanks] = useState([]);
+  const [loadingBanks, setLoadingBanks] = useState(false);
+  const [bankModalVisible, setBankModalVisible] = useState(false);
+  const [searchBankText, setSearchBankText] = useState("");
+  const [selectedBank, setSelectedBank] = useState(null);
 
   // Form fields
   const [fullName, setFullName] = useState("");
@@ -52,8 +60,29 @@ const EditProfile = () => {
   useFocusEffect(
     useCallback(() => {
       fetchUserData();
+      fetchBanks();
     }, [])
   );
+
+  const fetchBanks = async () => {
+    try {
+      setLoadingBanks(true);
+      const banksApiUrl = process.env.EXPO_PUBLIC_BANK_API_URL || "https://api.vietqr.io/v2/banks";
+      const response = await fetch(banksApiUrl);
+      const data = await response.json();
+      
+      if (data && data.data && Array.isArray(data.data)) {
+        // Filter banks that support transfers (isTransfer === 1)
+        const transferBanks = data.data.filter(bank => bank.isTransfer === 1);
+        setBanks(transferBanks);
+        console.log("Loaded banks:", transferBanks.length);
+      }
+    } catch (error) {
+      console.log("Error fetching banks:", error);
+    } finally {
+      setLoadingBanks(false);
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -101,6 +130,15 @@ const EditProfile = () => {
       setBankAccount(userData?.profile?.bank_account || "");
       setBankName(userData?.profile?.bank_name || "");
       setBankBin(userData?.profile?.bank_bin || "");
+      
+      // Set selected bank if bank_bin exists
+      if (userData?.profile?.bank_bin && banks.length > 0) {
+        const bank = banks.find(b => b.bin === userData?.profile?.bank_bin);
+        if (bank) {
+          setSelectedBank(bank);
+        }
+      }
+      
       setAvatarUri(userData?.profile?.avatar_url || null);
     } catch (error) {
       console.log("Error loading profile:", error);
@@ -127,6 +165,19 @@ const EditProfile = () => {
       Alert.alert("Error", "Failed to pick image");
     }
   };
+
+  const handleSelectBank = (bank) => {
+    setSelectedBank(bank);
+    setBankName(bank.name);
+    setBankBin(bank.bin);
+    setSearchBankText("");
+    setBankModalVisible(false);
+  };
+
+  const filteredBanks = banks.filter(bank =>
+    bank.name.toLowerCase().includes(searchBankText.toLowerCase()) ||
+    bank.bin.includes(searchBankText)
+  );
 
   const handleSubmit = async () => {
     if (!fullName.trim()) {
@@ -474,24 +525,31 @@ const EditProfile = () => {
           {/* Bank Name */}
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827", marginBottom: 8 }}>
-              Bank Name
+              Bank Name *
             </Text>
-            <TextInput
+            <Pressable
+              onPress={() => setBankModalVisible(true)}
+              disabled={submitting || loadingBanks}
               style={{
                 borderWidth: 1,
                 borderColor: "#e5e7eb",
                 borderRadius: 8,
                 paddingHorizontal: 12,
                 paddingVertical: 12,
-                fontSize: 14,
-                color: "#111827",
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
-              placeholder="Enter bank name"
-              placeholderTextColor="#9ca3af"
-              value={bankName}
-              onChangeText={setBankName}
-              editable={!submitting}
-            />
+            >
+              <Text style={{ fontSize: 14, color: bankName ? "#111827" : "#9ca3af" }}>
+                {bankName || "Select Bank"}
+              </Text>
+              <MaterialCommunityIcons
+                name="chevron-down"
+                size={20}
+                color="#6b7280"
+              />
+            </Pressable>
           </View>
 
           {/* Bank Account */}
@@ -513,30 +571,6 @@ const EditProfile = () => {
               placeholderTextColor="#9ca3af"
               value={bankAccount}
               onChangeText={setBankAccount}
-              editable={!submitting}
-            />
-          </View>
-
-          {/* Bank BIN */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827", marginBottom: 8 }}>
-              Bank BIN
-            </Text>
-            <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: "#e5e7eb",
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                fontSize: 14,
-                color: "#111827",
-              }}
-              placeholder="Enter bank BIN code (e.g. 970436)"
-              placeholderTextColor="#9ca3af"
-              value={bankBin}
-              onChangeText={setBankBin}
-              keyboardType="numeric"
               editable={!submitting}
             />
           </View>
@@ -564,6 +598,133 @@ const EditProfile = () => {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Bank Selection Modal */}
+      <Modal
+        visible={bankModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setBankModalVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: "#f3f4f6",
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>
+              Select Bank
+            </Text>
+            <Pressable onPress={() => setBankModalVisible(false)}>
+              <MaterialCommunityIcons name="close" size={24} color="#111827" />
+            </Pressable>
+          </View>
+
+          {/* Search */}
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: "#e5e7eb",
+                borderRadius: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 12,
+              }}
+            >
+              <MaterialCommunityIcons name="magnify" size={20} color="#6b7280" />
+              <TextInput
+                style={{
+                  flex: 1,
+                  paddingHorizontal: 8,
+                  paddingVertical: 10,
+                  fontSize: 14,
+                  color: "#111827",
+                }}
+                placeholder="Search bank name or code..."
+                placeholderTextColor="#9ca3af"
+                value={searchBankText}
+                onChangeText={setSearchBankText}
+              />
+              {searchBankText ? (
+                <Pressable onPress={() => setSearchBankText("")}>
+                  <MaterialCommunityIcons name="close-circle" size={18} color="#9ca3af" />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Bank List */}
+          {loadingBanks ? (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#389cfa" />
+            </View>
+          ) : filteredBanks.length === 0 ? (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+              <Text style={{ fontSize: 14, color: "#6b7280" }}>
+                {searchBankText ? "No banks found" : "Loading banks..."}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredBanks}
+              keyExtractor={(item) => item.bin}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => handleSelectBank(item)}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#f3f4f6",
+                    backgroundColor: selectedBank?.bin === item.bin ? "#f0f7ff" : "#fff",
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    {item.logo ? (
+                      <Image
+                        source={{ uri: item.logo }}
+                        style={{ width: 40, height: 40, borderRadius: 4 }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 4,
+                          backgroundColor: "#f3f4f6",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <MaterialCommunityIcons name="bank" size={20} color="#6b7280" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827" }}>
+                        {item.name}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                        {item.bin}
+                      </Text>
+                    </View>
+                    {selectedBank?.bin === item.bin && (
+                      <MaterialCommunityIcons name="check-circle" size={20} color="#389cfa" />
+                    )}
+                  </View>
+                </Pressable>
+              )}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
 
       {/* Calendar Modal */}
       <Modal
