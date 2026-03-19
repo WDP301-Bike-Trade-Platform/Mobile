@@ -51,6 +51,14 @@ const MyOrders = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(null);
 
+  const getErrorMessage = (error, fallbackMessage) => {
+    const apiMessage = error?.response?.data?.message;
+    if (Array.isArray(apiMessage)) return apiMessage[0] || fallbackMessage;
+    if (typeof apiMessage === 'string' && apiMessage.trim()) return apiMessage;
+    if (typeof error?.message === 'string' && error.message.trim()) return error.message;
+    return fallbackMessage;
+  };
+
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -124,7 +132,7 @@ const MyOrders = ({ navigation }) => {
       fetchOrders();
     } catch (error) {
       console.error('Error completing order:', error);
-      Alert.alert('Error', 'Unable to complete order');
+      Alert.alert('Error', getErrorMessage(error, 'Unable to complete order'));
     }
   };
 
@@ -137,7 +145,9 @@ const MyOrders = ({ navigation }) => {
           onAction: () => handleCancelOrder(order.order_id),
         };
       }
-      if (order.status === 'PAID') {
+      const shipmentStatus = order?.shipment?.status;
+      const canCompleteByShipment = shipmentStatus === 'DELIVERED';
+      if ((order.status === 'PAID' || order.status === 'CONFIRMED') && canCompleteByShipment) {
         return {
           actionType: 'complete',
           onAction: () => handleCompleteOrder(order.order_id),

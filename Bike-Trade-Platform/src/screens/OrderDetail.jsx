@@ -52,6 +52,14 @@ const OrderDetail = ({ route, navigation }) => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
 
+  const getErrorMessage = (error, fallbackMessage) => {
+    const apiMessage = error?.response?.data?.message;
+    if (Array.isArray(apiMessage)) return apiMessage[0] || fallbackMessage;
+    if (typeof apiMessage === 'string' && apiMessage.trim()) return apiMessage;
+    if (typeof error?.message === 'string' && error.message.trim()) return error.message;
+    return fallbackMessage;
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       fetchOrderDetail();
@@ -96,8 +104,12 @@ const OrderDetail = ({ route, navigation }) => {
     }
   };
 
-  const fetchShipmentTracking = async (targetOrderId = orderId) => {
-    if (!targetOrderId) {
+  const fetchShipmentTracking = async (targetOrderId) => {
+    const resolvedOrderId = typeof targetOrderId === 'string'
+      ? targetOrderId
+      : (order?.order_id || orderId);
+
+    if (!resolvedOrderId) {
       setShipment(null);
       setLoadingShipment(false);
       return;
@@ -105,7 +117,7 @@ const OrderDetail = ({ route, navigation }) => {
 
     try {
       setLoadingShipment(true);
-      const shipmentData = await getShipmentByOrder(targetOrderId);
+      const shipmentData = await getShipmentByOrder(resolvedOrderId);
       setShipment(shipmentData?.data || shipmentData);
     } catch (error) {
       const statusCode = error?.response?.status;
@@ -180,7 +192,7 @@ const OrderDetail = ({ route, navigation }) => {
             fetchOrderDetail();
           } catch (error) {
             console.error('Error completing order:', error);
-            Alert.alert('Error', 'Unable to complete order');
+            Alert.alert('Error', getErrorMessage(error, 'Unable to complete order'));
           } finally {
             setProcessingAction(false);
           }
@@ -299,6 +311,8 @@ const OrderDetail = ({ route, navigation }) => {
   const remainingAmount = Math.max(totalAmount - depositAmount, 0);
   const isDepositFlow = !!meta.depositRequired;
   const isFinalPaid = order.status === 'PAID' || order.status === 'COMPLETED';
+  const shipmentStatus = shipment?.status;
+  const canBuyerCompleteByShipment = shipmentStatus === 'DELIVERED';
 
   const summaryMainLabel = isDepositFlow
     ? (isFinalPaid ? 'Total Paid' : 'Amount Due')
@@ -317,8 +331,10 @@ const OrderDetail = ({ route, navigation }) => {
   const buyerCanPayRemaining = isBuyer && order.status === 'CONFIRMED';
   // Seller can confirm/reject when DEPOSITED
   const sellerCanConfirmReject = isSeller && (order.status === 'DEPOSITED' || (order.status === 'PENDING' && paymentMethod === 'COD'));
-  // Buyer can complete when PAID
-  const buyerCanComplete = isBuyer && order.status === 'PAID';
+  // Buyer can complete when shipment is DELIVERED and order is in a completable status
+  const buyerCanComplete = isBuyer
+    && canBuyerCompleteByShipment
+    && (order.status === 'CONFIRMED' || order.status === 'PAID');
   // Buyer can cancel when PENDING (before deposit)
   const buyerCanCancel = isBuyer && order.status === 'PENDING';
 
@@ -469,7 +485,7 @@ const OrderDetail = ({ route, navigation }) => {
                 <MaterialCommunityIcons name="truck-delivery-outline" size={20} color="#389cfa" />
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Shipment Tracking</Text>
               </View>
-              <Pressable onPress={fetchShipmentTracking}>
+              <Pressable onPress={() => fetchShipmentTracking(order?.order_id || orderId)}>
                 <MaterialCommunityIcons name="refresh" size={20} color="#6b7280" />
               </Pressable>
             </View>

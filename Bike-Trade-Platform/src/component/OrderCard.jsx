@@ -12,7 +12,7 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
       CONFIRMED: '#3b82f6',
       PAID: '#06b6d4',
       FORFEITED: '#dc2626',
-      CANCELLED: '#ef4444',
+      CANCELLED_BY_BUYER: '#781616',
       CANCELLED_BY_SELLER: '#f97316',
       COMPLETED: '#10b981',
     };
@@ -26,8 +26,8 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
       CONFIRMED: 'Confirmed',
       PAID: 'Paid',
       FORFEITED: 'Forfeited',
-      CANCELLED: 'Cancelled',
-      CANCELLED_BY_SELLER: 'Rejected by Seller',
+      CANCELLED_BY_BUYER: 'Cancelled',
+      CANCELLED_BY_SELLER: 'Rejected',
       COMPLETED: 'Completed',
     };
     return texts[status] || status;
@@ -72,7 +72,7 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
       );
     }
 
-    if (actionType === 'complete' && order.status === 'PAID') {
+    if (actionType === 'complete' && (order.status === 'PAID' || order.status === 'CONFIRMED')) {
       return (
         <Pressable
           onPress={onAction}
@@ -199,7 +199,7 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
       </View>
 
       {/* Action Button */}
-      {getActionButton()}
+      {/* {getActionButton()} */}
     </Pressable>
   );
 };
