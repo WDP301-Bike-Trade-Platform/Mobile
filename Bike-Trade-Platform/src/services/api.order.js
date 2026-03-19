@@ -117,17 +117,7 @@ export const completeOrder = async (orderId) => {
 
 // Seller xác nhận đơn hàng (cho escrow)
 export const sellerConfirmOrder = async (orderId) => {
-  try {
-    const encodedOrderId = encodeURIComponent(orderId);
-    const url = `/orders/${encodedOrderId}/confirm`;
-    const response = await instance.patch(url, {
-      note: 'Confirmed by seller',
-    });
-    return unwrapApiResponse(response);
-  } catch (error) {
-    console.error("Error confirming order:", error);
-    throw error;
-  }
+  return confirmOrder(orderId, 'Confirmed by seller');
 };
 
 // Seller từ chối đơn hàng (cho escrow)

@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { getOrderById, cancelOrder, confirmOrder, completeOrder, sellerConfirmOrder, sellerRejectOrder } from '../services/api.order';
+import { getOrderById, cancelOrder, completeOrder, sellerConfirmOrder, sellerRejectOrder } from '../services/api.order';
 import { createPaymentForOrder } from '../services/api.payment';
+import { getShipmentByOrder, getStatusLabel, getStatusColor } from '../services/api.shipment';
 import { useAppContext } from '../provider/AppProvider';
 import HeaderBar from '../component/HeaderBar';
 import StatusBadge from '../component/StatusBadge';
@@ -44,8 +45,9 @@ const OrderDetail = ({ route, navigation }) => {
   const { orderId } = route.params;
   const { user } = useAppContext();
   const currentUserId = user?.user_id || user?.userId || user?.id;
-  console.log('📋 OrderDetail loaded:', { orderId, userId: currentUserId });
   const [order, setOrder] = useState(null);
+  const [shipment, setShipment] = useState(null);
+  const [loadingShipment, setLoadingShipment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
@@ -56,11 +58,35 @@ const OrderDetail = ({ route, navigation }) => {
     }, [orderId])
   );
 
+  const shouldFetchShipmentForOrder = (orderData) => {
+    if (!orderData) return false;
+    const orderStatus = orderData.status;
+    const method = (orderData.meta?.paymentMethod || '').toUpperCase();
+
+    if (orderStatus === 'DEPOSITED' || orderStatus === 'PAID' || orderStatus === 'COMPLETED') {
+      return true;
+    }
+
+    if (orderStatus === 'CONFIRMED' && method !== 'COD') {
+      return true;
+    }
+
+    return false;
+  };
+
   const fetchOrderDetail = async () => {
     try {
       setLoading(true);
       const response = await getOrderById(orderId);
-      setOrder(response?.data || response);
+      const orderData = response?.data || response;
+      setOrder(orderData);
+
+      if (shouldFetchShipmentForOrder(orderData)) {
+        await fetchShipmentTracking(orderData.order_id || orderId);
+      } else {
+        setShipment(null);
+        setLoadingShipment(false);
+      }
     } catch (error) {
       console.error('Error fetching order detail:', error);
       Alert.alert('Error', 'Unable to load order details');
@@ -70,11 +96,35 @@ const OrderDetail = ({ route, navigation }) => {
     }
   };
 
+  const fetchShipmentTracking = async (targetOrderId = orderId) => {
+    if (!targetOrderId) {
+      setShipment(null);
+      setLoadingShipment(false);
+      return;
+    }
+
+    try {
+      setLoadingShipment(true);
+      const shipmentData = await getShipmentByOrder(targetOrderId);
+      setShipment(shipmentData?.data || shipmentData);
+    } catch (error) {
+      const statusCode = error?.response?.status;
+      if (statusCode === 404) {
+        setShipment(null);
+        return;
+      }
+      console.error('Error fetching shipment tracking:', error);
+      setShipment(null);
+    } finally {
+      setLoadingShipment(false);
+    }
+  };
+
   const handlePayment = async () => {
     try {
       setProcessingPayment(true);
-      const paymentStage = order.status === 'CONFIRMED' ? 'REMAINING' : 'DEPOSIT';
-      const response = await createPaymentForOrder(orderId, paymentStage);
+      const paymentStage = order.status === 'PENDING' ? 'DEPOSIT' : 'REMAINING';
+      const response = await createPaymentForOrder(orderId, { paymentStage });
       const paymentData = response?.data || response;
 
       if (paymentData.paymentLink) {
@@ -117,28 +167,6 @@ const OrderDetail = ({ route, navigation }) => {
     ]);
   };
 
-  const handleConfirmOrder = () => {
-    Alert.alert('Confirm Order', 'Are you sure you want to confirm this COD order?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Confirm',
-        onPress: async () => {
-          try {
-            setProcessingAction(true);
-            await confirmOrder(orderId, 'Confirmed by seller');
-            Alert.alert('Success', 'Order confirmed');
-            fetchOrderDetail();
-          } catch (error) {
-            console.error('Error confirming order:', error);
-            Alert.alert('Error', 'Unable to confirm order');
-          } finally {
-            setProcessingAction(false);
-          }
-        },
-      },
-    ]);
-  };
-
   const handleCompleteOrder = () => {
     Alert.alert('Complete Order', 'Confirm you have received the items and complete the order?', [
       { text: 'No', style: 'cancel' },
@@ -162,7 +190,7 @@ const OrderDetail = ({ route, navigation }) => {
   };
 
   const handleSellerConfirm = () => {
-    Alert.alert('Confirm Order', 'Are you sure you want to confirm this order? This will start the 3-minute countdown for the buyer to pay the remaining amount.', [
+    Alert.alert('Confirm Order', 'Are you sure you want to confirm this order?', [
       { text: 'No', style: 'cancel' },
       {
         text: 'Confirm',
@@ -171,7 +199,7 @@ const OrderDetail = ({ route, navigation }) => {
             setProcessingAction(true);
             console.log('👉 handleSellerConfirm called with orderId:', orderId);
             await sellerConfirmOrder(orderId);
-            Alert.alert('Success', 'Order confirmed. Buyer has 3 minutes to pay the remaining amount.');
+            Alert.alert('Success', 'Order confirmed.');
             fetchOrderDetail();
           } catch (error) {
             console.error('❌ handleSellerConfirm error:', error.message);
@@ -260,6 +288,7 @@ const OrderDetail = ({ route, navigation }) => {
   const isBuyer = order.buyer_id === currentUserId;
   const isSeller = order.listing?.seller?.user_id === currentUserId || order.listing?.seller_id === currentUserId;
   const meta = order.meta || {};
+  const paymentMethod = (meta.paymentMethod || '').toUpperCase();
   const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS.PENDING;
 
   const totalAmount =
@@ -283,11 +312,11 @@ const OrderDetail = ({ route, navigation }) => {
   })();
 
   // Buyer can pay deposit when PENDING
-  const buyerCanPayDeposit = isBuyer && order.status === 'PENDING';
+  const buyerCanPayDeposit = isBuyer && order.status === 'PENDING' && meta.depositRequired && !meta.depositPaid && paymentMethod !== 'COD';
   // Buyer can pay remaining when CONFIRMED
   const buyerCanPayRemaining = isBuyer && order.status === 'CONFIRMED';
   // Seller can confirm/reject when DEPOSITED
-  const sellerCanConfirmReject = isSeller && order.status === 'DEPOSITED';
+  const sellerCanConfirmReject = isSeller && (order.status === 'DEPOSITED' || (order.status === 'PENDING' && paymentMethod === 'COD'));
   // Buyer can complete when PAID
   const buyerCanComplete = isBuyer && order.status === 'PAID';
   // Buyer can cancel when PENDING (before deposit)
@@ -429,6 +458,67 @@ const OrderDetail = ({ route, navigation }) => {
             <Text style={{ fontSize: 14, color: '#374151', lineHeight: 22 }}>
               {formatAddress(shippingAddr)}
             </Text>
+          </View>
+        )}
+
+        {/* Shipment Tracking (Auto by Order ID) */}
+        {(loadingShipment || shipment) && (
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="truck-delivery-outline" size={20} color="#389cfa" />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }}>Shipment Tracking</Text>
+              </View>
+              <Pressable onPress={fetchShipmentTracking}>
+                <MaterialCommunityIcons name="refresh" size={20} color="#6b7280" />
+              </Pressable>
+            </View>
+
+            {loadingShipment ? (
+              <ActivityIndicator size="small" color="#389cfa" />
+            ) : shipment ? (
+              <>
+                <InfoRow label="Carrier" value={shipment.carrier || 'N/A'} />
+                <InfoRow label="Tracking Number" value={shipment.trackingNumber || 'N/A'} />
+                <InfoRow label="Status" value={getStatusLabel(shipment.status)} valueColor={getStatusColor(shipment.status)} />
+                {shipment.estimatedDelivery && (
+                  <InfoRow label="Estimated Delivery" value={formatDateTime(shipment.estimatedDelivery)} />
+                )}
+
+                {Array.isArray(shipment.trackings) && shipment.trackings.length > 0 && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8 }}>Tracking History</Text>
+                    {shipment.trackings.slice(0, 3).map((tracking, idx) => (
+                      <View
+                        key={tracking.trackingId || `${tracking.trackedAt}-${idx}`}
+                        style={{
+                          paddingVertical: 8,
+                          borderTopWidth: idx > 0 ? 1 : 0,
+                          borderTopColor: '#f3f4f6',
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>
+                          {getStatusLabel(tracking.status)}
+                        </Text>
+                        {tracking.location ? (
+                          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                            {tracking.location}
+                          </Text>
+                        ) : null}
+                        {tracking.description ? (
+                          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                            {tracking.description}
+                          </Text>
+                        ) : null}
+                        <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                          {formatDateTime(tracking.trackedAt)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            ) : null}
           </View>
         )}
 
@@ -623,26 +713,6 @@ const OrderDetail = ({ route, navigation }) => {
                 Confirm receipt and complete order
               </Text>
             </View>
-          )}
-
-          {/* Track Shipment - Show when order is paid or later */}
-          {(order.status === 'PAID' || order.status === 'COMPLETED') && (
-            <Pressable
-              onPress={() => navigation.navigate('ShipmentTracking', { orderId })}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center',
-                paddingVertical: 14,
-                borderRadius: 12,
-                backgroundColor: '#389cfa',
-                gap: 8,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <MaterialCommunityIcons name="truck-delivery" size={20} color="#fff" />
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Track Shipment</Text>
-            </Pressable>
           )}
 
           {/* Buyer: Cancel (PENDING) - only if not escrow */}

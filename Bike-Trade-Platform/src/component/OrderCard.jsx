@@ -53,7 +53,7 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
       );
     }
 
-    if (actionType === 'confirm' && order.status === 'PENDING') {
+    if (actionType === 'confirm' && (order.status === 'PENDING' || order.status === 'DEPOSITED')) {
       return (
         <Pressable
           onPress={onAction}
@@ -66,13 +66,13 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
           })}
         >
           <Text style={{ fontSize: 13, fontWeight: '600', color: '#3b82f6' }}>
-            Confirm Order
+            {order.status === 'DEPOSITED' ? 'Confirm Deposit Order' : 'Confirm COD Order'}
           </Text>
         </Pressable>
       );
     }
 
-    if (actionType === 'complete' && order.status === 'CONFIRMED') {
+    if (actionType === 'complete' && order.status === 'PAID') {
       return (
         <Pressable
           onPress={onAction}

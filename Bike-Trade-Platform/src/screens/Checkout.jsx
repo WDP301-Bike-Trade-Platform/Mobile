@@ -29,7 +29,7 @@ const Checkout = ({ route, navigation }) => {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('PAYOS');
-  const [isDepositPayment, setIsDepositPayment] = useState(true);
+  const [isDepositPayment, setIsDepositPayment] = useState(false);
 
   const orderTotal = totalAmount || listing?.price || 0;
   const depositAmount = Math.round(orderTotal * DEPOSIT_RATE * 100) / 100;

@@ -41,7 +41,9 @@ export const getShipmentById = async (shipmentId) => {
     const response = await instance.get(`/shipping/${shipmentId}`);
     return validateShipmentResponse(response.data);
   } catch (error) {
-    console.error('Error getting shipment by ID:', error);
+    if (error?.response?.status !== 404) {
+      console.error('Error getting shipment by ID:', error);
+    }
     throw error;
   }
 };
@@ -56,7 +58,9 @@ export const getShipmentByOrder = async (orderId) => {
     const response = await instance.get(`/shipping/order/${orderId}`);
     return validateShipmentResponse(response.data);
   } catch (error) {
-    console.error('Error getting shipment by order:', error);
+    if (error?.response?.status !== 404) {
+      console.error('Error getting shipment by order:', error);
+    }
     throw error;
   }
 };

@@ -14,7 +14,7 @@ import {
   getMyOrders,
   getSellerOrders,
   cancelOrder,
-  confirmOrder,
+  sellerConfirmOrder,
   completeOrder,
   OrderStatus,
 } from '../services/api.order';
@@ -28,13 +28,20 @@ const TABS = [
   { key: 'sell', label: 'Sell' },
 ];
 
+const CANCELLED_ALL = 'CANCELLED_ALL';
+const CANCELLED_STATUSES = [
+  OrderStatus.CANCELLED_BY_BUYER,
+  OrderStatus.CANCELLED_BY_SELLER,
+];
+
 const STATUS_FILTERS = [
   { label: 'All', value: null },
   { label: 'Pending', value: OrderStatus.PENDING },
+  { label: 'Deposited', value: OrderStatus.DEPOSITED },
   { label: 'Confirmed', value: OrderStatus.CONFIRMED },
+  { label: 'Paid', value: OrderStatus.PAID },
   { label: 'Completed', value: OrderStatus.COMPLETED },
-  { label: 'Cancelled', value: OrderStatus.CANCELLED_BY_SELLER || OrderStatus.CANCELLED_BY_BUYER },
-  
+  { label: 'Cancelled', value: CANCELLED_ALL },
 ];
 
 const MyOrders = ({ navigation }) => {
@@ -48,8 +55,15 @@ const MyOrders = ({ navigation }) => {
     try {
       setLoading(true);
       const fetchFn = activeTab === 'buy' ? getMyOrders : getSellerOrders;
-      const data = await fetchFn(selectedStatus);
-      setOrders(Array.isArray(data) ? data : data?.data || []);
+      const queryStatus = selectedStatus === CANCELLED_ALL ? null : selectedStatus;
+      const data = await fetchFn(queryStatus);
+      const list = Array.isArray(data) ? data : data?.data || [];
+
+      if (selectedStatus === CANCELLED_ALL) {
+        setOrders(list.filter((order) => CANCELLED_STATUSES.includes(order.status)));
+      } else {
+        setOrders(list);
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
       Alert.alert('Error', 'Unable to load orders');
@@ -94,7 +108,7 @@ const MyOrders = ({ navigation }) => {
 
   const handleConfirmOrder = async (orderId) => {
     try {
-      await confirmOrder(orderId, 'Confirmed by seller');
+      await sellerConfirmOrder(orderId);
       Alert.alert('Success', 'Order confirmed');
       fetchOrders();
     } catch (error) {
@@ -116,14 +130,14 @@ const MyOrders = ({ navigation }) => {
 
   const getOrderAction = (order) => {
     if (activeTab === 'buy') {
-      // Buyer: cancel PENDING, complete CONFIRMED
+      // Buyer: cancel when pending, complete when paid
       if (order.status === 'PENDING') {
         return {
           actionType: 'cancel',
           onAction: () => handleCancelOrder(order.order_id),
         };
       }
-      if (order.status === 'CONFIRMED') {
+      if (order.status === 'PAID') {
         return {
           actionType: 'complete',
           onAction: () => handleCompleteOrder(order.order_id),
@@ -131,8 +145,12 @@ const MyOrders = ({ navigation }) => {
       }
       return { actionType: null, onAction: null };
     }
-    // Seller tab: confirm PENDING
-    if (order.status === 'PENDING') {
+    // Seller tab: confirm deposited orders or COD pending orders
+    const isCodPendingOrder =
+      order.status === 'PENDING' &&
+      (order?.meta?.paymentMethod || '').toUpperCase() === 'COD';
+
+    if (order.status === 'DEPOSITED' || isCodPendingOrder) {
       return {
         actionType: 'confirm',
         onAction: () => handleConfirmOrder(order.order_id),
