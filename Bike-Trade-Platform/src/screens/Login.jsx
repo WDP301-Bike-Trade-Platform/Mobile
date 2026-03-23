@@ -363,7 +363,7 @@ const Login = () => {
             </Pressable>
 
             {/* Divider */}
-            <View
+            {/* <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -396,10 +396,10 @@ const Login = () => {
                   backgroundColor: "#e5e7eb",
                 }}
               />
-            </View>
+            </View> */}
 
             {/* Social Login Buttons */}
-            <View
+            {/* <View
               style={{
                 flexDirection: "row",
                 gap: 16,
@@ -445,7 +445,7 @@ const Login = () => {
                 </Text>
               </Pressable>
 
-            </View>
+            </View> */}
           </View>
 
           {/* Footer / Sign Up Link */}
