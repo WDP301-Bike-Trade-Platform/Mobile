@@ -23,11 +23,12 @@ export const getChatMessages = async (chatId, skip = 0, take = 50) => {
 };
 
 // POST /chats/:chatId/messages - Gửi tin nhắn
-export const sendMessage = async (chatId, content, imageUrl) => {
+export const sendMessage = async (chatId, content, imageUrl, type = 'TEXT', offerId = null) => {
   try {
-    const body = {};
+    const body = { type };
     if (content) body.content = content;
     if (imageUrl) body.imageUrl = imageUrl;
+    if (offerId) body.offerId = offerId;
     const response = await instance.post(`/chats/${chatId}/messages`, body);
     return response.data;
   } catch (error) {

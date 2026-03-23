@@ -9,18 +9,36 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { getChatMessages, sendMessage } from "../services/api.chat";
+import { createOffer, acceptOffer, rejectOffer } from "../services/api.offers";
 import { useAppContext } from "../provider/AppProvider";
 import { useChatSocket } from "../hooks/useChatSocket";
 
 const Conversation = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { chatId, otherUser } = route.params || {};
+  const { chatId, otherUser, listing } = route.params || {};
+
+  const parsePrice = (price) => {
+    if (!price) return 0;
+    if (typeof price === "number") return price;
+    if (price.s !== undefined && price.e !== undefined && price.d) {
+      const sign = price.s === 1 ? 1 : -1;
+      const digits = price.d.join("");
+      const exponent = price.e;
+      const numStr = digits.substring(0, exponent + 1) + (digits.length > exponent + 1 ? "." + digits.substring(exponent + 1) : "");
+      return sign * parseFloat(numStr);
+    }
+    return parseFloat(price) || 0;
+  };
+
+  const parsedListingPrice = parsePrice(listing?.price);
 
   const { user } = useAppContext();
   const currentUserId = user?.user_id || user?.userId || user?.id;
@@ -30,13 +48,21 @@ const Conversation = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false); // other user is typing
+
+  const [offerModalVisible, setOfferModalVisible] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [submittingOffer, setSubmittingOffer] = useState(false);
+
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const messageIdsRef = useRef(new Set()); // deduplicate messages from socket + HTTP
 
   /* ── Fetch initial messages (HTTP) ────────────────────────── */
   const fetchMessages = useCallback(async () => {
-    if (!chatId) return;
+    if (!chatId) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await getChatMessages(chatId);
       // Backend: { success, data: { total, items: MessageResponse[] } }
@@ -108,6 +134,23 @@ const Conversation = () => {
       leaveChat(chatId);
     };
   }, [chatId, joinChat, leaveChat]);
+
+  // Handle Offer Status Changes Real-time
+  useEffect(() => {
+    if (!socketRef.current) return;
+    const handleOfferStatusChanged = (data) => {
+      if (!data || !data.offerId) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.offerId === data.offerId ? { ...m, offerStatus: data.status || data.offerStatus } : m
+        )
+      );
+    };
+    socketRef.current.on('offer_status_changed', handleOfferStatusChanged);
+    return () => {
+      socketRef.current?.off('offer_status_changed', handleOfferStatusChanged);
+    };
+  }, [socketRef]);
 
   /* ── Typing indicator ──────────────────────────────────────── */
   const handleTextChange = (text) => {
@@ -185,6 +228,80 @@ const Conversation = () => {
     }
   };
 
+  /* ── Offer logic ───────────────────────────────────────────── */
+  const handleSubmitOffer = async () => {
+    const numericPrice = Number(offerAmount.replace(/[^0-9]/g, ""));
+    if (!numericPrice || numericPrice <= 0) return;
+    if (!listing?.id) {
+      Alert.alert("Error", "No listing found to place an offer on.");
+      return;
+    }
+
+    setSubmittingOffer(true);
+    try {
+      const res = await createOffer(listing.id, numericPrice);
+      const offerId = res.offer_id || res.id;
+
+      if (socketRef.current?.connected) {
+        socketRef.current.emit(
+          "sendMessage",
+          { chatId, type: "OFFER", offerId, content: "I want this price" },
+          (ack) => {
+            if (ack?.success && ack?.data) {
+              const msg = ack.data;
+              if (msg.messageId && !messageIdsRef.current.has(msg.messageId)) {
+                messageIdsRef.current.add(msg.messageId);
+                setMessages((prev) => [...prev, msg]);
+                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300);
+              }
+            }
+          }
+        );
+      } else {
+        // Fallback to REST API when socket is not connected
+        const resMsg = await sendMessage(chatId, "I want this price", null, "OFFER", offerId);
+        const newMsg = resMsg.data || resMsg;
+        if (newMsg?.messageId && !messageIdsRef.current.has(newMsg.messageId)) {
+          messageIdsRef.current.add(newMsg.messageId);
+          setMessages((prev) => [...prev, newMsg]);
+        }
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 300);
+      }
+      setOfferModalVisible(false);
+      setOfferAmount("");
+    } catch (err) {
+      console.log("Error sending offer:", err);
+      Alert.alert("Error", "Could not send offer.");
+    } finally {
+      setSubmittingOffer(false);
+    }
+  };
+
+  const handleAcceptOffer = async (offerId) => {
+    try {
+      await acceptOffer(offerId);
+      setMessages((prev) =>
+        prev.map((m) => (m.offerId === offerId ? { ...m, offerStatus: "ACCEPTED" } : m))
+      );
+    } catch (error) {
+      console.log("Accept error", error);
+      Alert.alert("Error", "Could not accept offer.");
+    }
+  };
+
+  const handleRejectOffer = async (offerId) => {
+    try {
+      await rejectOffer(offerId);
+      setMessages((prev) =>
+        prev.map((m) => (m.offerId === offerId ? { ...m, offerStatus: "REJECTED" } : m))
+      );
+    } catch (error) {
+      console.log("Reject error", error);
+    }
+  };
+
   /* ── Helpers ───────────────────────────────────────────────── */
   const formatTime = (dateValue) => {
     if (!dateValue) return "";
@@ -214,6 +331,107 @@ const Conversation = () => {
     const isMe =
       message.senderId === currentUserId ||
       message.sender === currentUserId;
+
+    if (message.type === "OFFER") {
+      const priceStr = (message.offeredPrice || 0).toLocaleString("vi-VN") + " ₫";
+      return (
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 12, marginHorizontal: 16, justifyContent: isMe ? "flex-end" : "flex-start" }}>
+          {!isMe && (
+             <View>
+               {otherAvatar ? (
+                 <Image source={{ uri: otherAvatar }} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: "#e5e7eb" }} />
+               ) : (
+                 <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: "#389cfa", justifyContent: "center", alignItems: "center" }}>
+                   <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{getInitials(otherName)}</Text>
+                 </View>
+               )}
+             </View>
+          )}
+          <View style={{ maxWidth: "75%", backgroundColor: isMe ? "#e8f4ff" : "#fff", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderBottomLeftRadius: isMe ? 16 : 4, borderBottomRightRadius: isMe ? 4 : 16, borderWidth: 1, borderColor: isMe ? "#bae6fd" : "#e5e7eb", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }}>
+             <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#111827', marginBottom: 8 }}>
+               {isMe ? "You offered:" : "Offered price:"} {priceStr} 
+             </Text>
+             
+             {/* Product Mini Info inside Bubble */}
+             {(() => {
+               const offerListing = message.listing || listing;
+               if (!offerListing) return null;
+               const title = message.listing?.vehicle 
+                 ? `${message.listing.vehicle.brand} ${message.listing.vehicle.model}` 
+                 : (offerListing.title || `${offerListing.brand} ${offerListing.model}`);
+               const mediaList = message.listing?.media || [];
+               const imageUrl = mediaList.length > 0 ? mediaList[0].file_url : (offerListing.images?.[0] || offerListing.image || 'https://placehold.co/100x100');
+               return (
+                 <View style={{ flexDirection: 'column', alignItems: 'center', backgroundColor: isMe ? '#ffffff80' : '#f3f4f6', padding: 8, borderRadius: 8, marginBottom: 4, gap: 8 }}>
+                   <Image 
+                     source={{ uri: imageUrl }} 
+                     style={{ width: 100, height: 100, borderRadius: 6 }} 
+                   />
+                   <View style={{ flex: 1 }}>
+                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827', lineHeight: 16 }} numberOfLines={2}>
+                       {title}
+                     </Text>
+                   </View>
+                 </View>
+               );
+             })()}
+             {isMe ? (
+               <View style={{ marginTop: 8 }}>
+                 {message.offerStatus === "PENDING" && <Text style={{ color: "#d97706", fontSize: 13 }}>Pending seller approval</Text>}
+                 {message.offerStatus === "ACCEPTED" && (
+                   <Pressable 
+                     style={{ backgroundColor: "#16a34a", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, marginTop: 6 }}
+                     onPress={() => {
+                       const offerListingId = message.listing?.listing_id || listing?.id || listing?.listing_id;
+                       navigation.navigate("Checkout", {
+                         listing: {
+                           ...(listing || {}),
+                           listing_id: offerListingId,
+                           id: offerListingId,
+                           title: listing?.title || (message.listing?.vehicle ? `${message.listing.vehicle.brand} ${message.listing.vehicle.model}` : ''),
+                           price: message.offeredPrice || listing?.price || 0,
+                         },
+                         offerId: message.offerId,
+                         totalAmount: message.offeredPrice || 0,
+                       });
+                     }}
+                   >
+                     <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center", fontSize: 14 }}>
+                        Checkout {priceStr}
+                     </Text>
+                   </Pressable>
+                 )}
+                 {(message.offerStatus === "REJECTED" || message.offerStatus === "CANCELLED") && (
+                   <Text style={{ color: "#ff0000ff", fontSize: 13, textAlign: "center" }}>Rejected</Text>
+                 )}
+                 {message.offerStatus === "DONE" && (
+                   <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>
+                 )}
+               </View>
+             ) : (
+               <View style={{ marginTop: 8 }}>
+                 {(!message.offerStatus || message.offerStatus === "PENDING") && (
+                   <View style={{ flexDirection: "row", gap: 8 }}>
+                     <Pressable style={{ backgroundColor: "#389cfa", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, flex: 1 }} onPress={() => handleAcceptOffer(message.offerId)}>
+                       <Text style={{ color: "#fff", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Accept</Text>
+                     </Pressable>
+                     <Pressable style={{ backgroundColor: "#f3f4f6", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, flex: 1 }} onPress={() => handleRejectOffer(message.offerId)}>
+                       <Text style={{ color: "#dc2626", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Reject</Text>
+                     </Pressable>
+                   </View>
+                 )}
+                 {message.offerStatus === "ACCEPTED" && <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Accepted</Text>}
+                 {(message.offerStatus === "REJECTED" || message.offerStatus === "CANCELLED") && <Text style={{ color: "#ff0000ff", textAlign: "center", fontSize: 13 }}>Rejected</Text>}
+                 {message.offerStatus === "DONE" && <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>}
+               </View>
+             )}
+             <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 6, textAlign: isMe ? 'right' : 'left' }}>
+               {formatTime(message.sentAt || message.created_at)}
+             </Text>
+          </View>
+        </View>
+      );
+    }
 
     return (
       <View
@@ -458,12 +676,61 @@ const Conversation = () => {
             </Text>
             {isTyping && (
               <Text style={{ fontSize: 12, color: "#389cfa" }}>
-                Đang nhập...
+                Typing...
               </Text>
             )}
           </View>
         </View>
       </View>
+
+      {/* Product Mini Card */}
+      {listing && (
+        <View style={{ backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 10 }}>
+          <Image source={{ uri: listing.images?.[0] || listing.image || 'https://placehold.co/100x100' }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }} numberOfLines={1}>{listing.title || `${listing.brand} ${listing.model}`}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#389cfa', marginTop: 2 }}>
+              {parsedListingPrice ? `${parsedListingPrice.toLocaleString("vi-VN")} ₫` : "Contact for price"}
+            </Text>
+          </View>
+          <Pressable 
+            onPress={() => setOfferModalVisible(true)}
+            style={{ backgroundColor: '#e8f4ff', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#389cfa' }}
+          >
+            <Text style={{ color: '#389cfa', fontWeight: 'bold', fontSize: 13 }}>Offer</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Offer Modal */}
+      <Modal visible={offerModalVisible} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
+            <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 12, color: "#111827" }}>Enter your desired price (₫)</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, padding: 12, fontSize: 18, marginBottom: 16 }}
+                keyboardType="numeric"
+                placeholder="Ex: 5000000"
+                value={offerAmount}
+                onChangeText={setOfferAmount}
+              />
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <Pressable style={{ flex: 1, padding: 14, backgroundColor: "#f3f4f6", borderRadius: 12 }} onPress={() => setOfferModalVisible(false)}>
+                  <Text style={{ textAlign: "center", fontWeight: "600", color: "#4b5563" }}>Cancel</Text>
+                </Pressable>
+                <Pressable style={{ flex: 1, padding: 14, backgroundColor: "#389cfa", borderRadius: 12 }} onPress={handleSubmitOffer} disabled={submittingOffer}>
+                  {submittingOffer ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={{ textAlign: "center", fontWeight: "600", color: "#fff" }}>Send Offer</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

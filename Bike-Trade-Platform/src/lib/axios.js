@@ -14,7 +14,7 @@ instance.interceptors.request.use(
   async (config) => {
     try {
       // Log the request URL for debugging
-      console.log(`📡 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+      console.log(`📡 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data ? JSON.stringify(config.data) : "");
       
       // Don't add token to auth endpoints (login, register, verify-otp, refresh-token)
       const authEndpoints = ["/auth/login", "/auth/register", "/auth/verify-otp", "/auth/refresh-token"];

@@ -21,7 +21,7 @@ import { formatPrice } from '../utils/formatters';
 const DEPOSIT_RATE = 0.1;
 
 const Checkout = ({ route, navigation }) => {
-  const { listing, cartItems, totalAmount } = route.params;
+  const { listing, cartItems, totalAmount, offerId } = route.params;
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -31,7 +31,7 @@ const Checkout = ({ route, navigation }) => {
   const [paymentMethod, setPaymentMethod] = useState('PAYOS');
   const [isDepositPayment, setIsDepositPayment] = useState(false);
 
-  const orderTotal = totalAmount || listing?.price || 0;
+  const orderTotal = totalAmount || listing?.price || listing?.offeredPrice || 0;
   const depositAmount = Math.round(orderTotal * DEPOSIT_RATE * 100) / 100;
   const payableNow =
     paymentMethod === 'PAYOS' && isDepositPayment ? depositAmount : orderTotal;
@@ -121,12 +121,13 @@ const Checkout = ({ route, navigation }) => {
         // Checkout single listing - create order first
         const useDeposit = paymentMethod === 'PAYOS' && isDepositPayment;
         const orderData = {
-          listingId: listing.listing_id,
+          listingId: listing.listing_id || listing.id,
           paymentMethod,
           isDeposit: useDeposit,
           shippingAddressId: selectedAddress.address_id,
           deliveryPhone: selectedAddress.phone || undefined,
           note: note || undefined,
+          offerId: offerId || undefined,
         };
 
         const order = await createOrder(orderData);
@@ -320,7 +321,8 @@ const Checkout = ({ route, navigation }) => {
 
         
         </View>
-        {paymentMethod === 'PAYOS' && (
+
+        {paymentMethod === 'PAYOS' && !offerId && (
          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
               Payment Options

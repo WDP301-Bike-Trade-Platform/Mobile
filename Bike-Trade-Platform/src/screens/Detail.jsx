@@ -15,6 +15,8 @@ import { useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCart } from "../hooks/useCart";
 import { getProductById } from "../services/api.products";
+import { createChat } from "../services/api.chat";
+import { useAppContext } from "../provider/AppProvider";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -114,6 +116,9 @@ const Detail = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+
+  const { user } = useAppContext();
 
   const {
     addStorageData: addToFavorites,
@@ -215,6 +220,51 @@ const Detail = () => {
       console.error("Failed to add to cart:", error);
     } finally {
       setIsAddingToCart(false);
+    }
+  };
+
+  const handleChatWithSeller = async () => {
+    if (!user) {
+      Alert.alert("Authentication Required", "Please log in to chat with the seller.");
+      return;
+    }
+    
+    // Check if the current user is the seller
+    const currentUserId = user?.user_id || user?.userId || user?.id;
+    const sellerId = sellerData.user_id || sellerData.id;
+    console.log("sellerData structure:", JSON.stringify(sellerData));
+    console.log("Resolved sellerId:", sellerId);
+    
+    if (currentUserId === sellerId) {
+      Alert.alert("Invalid Action", "You cannot chat with yourself.");
+      return;
+    }
+
+    if (isCreatingChat) return;
+    setIsCreatingChat(true);
+
+    try {
+      const chatRes = await createChat(sellerId);
+      const chatData = chatRes.data || chatRes;
+      
+      navigation.navigate("Conversation", {
+        chatId: chatData.chatId || chatData.chat_id || chatData.id,
+        otherUser: sellerData,
+        listing: {
+          ...vehicleData,
+          id: listingId,
+          title: `${vehicleData.brand} ${vehicleData.model}`,
+          brand: vehicleData.brand,
+          model: vehicleData.model,
+          price: price,
+          images: images,
+        }
+      });
+    } catch (error) {
+      console.log("Error creating chat:", error);
+      Alert.alert("Error", "Could not start conversation with the seller.");
+    } finally {
+      setIsCreatingChat(false);
     }
   };
 
@@ -477,7 +527,7 @@ const Detail = () => {
             </Text>
 
             <Text style={{ fontSize: 26, fontWeight: "800", color: "#359EFF", marginBottom: 8 }}>
-              {price ? `₫${price.toLocaleString("vi-VN")}` : "Contact for price"}
+              {price ? `${price.toLocaleString("vi-VN")} ₫` : "Contact for price"}
             </Text>
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -814,6 +864,8 @@ const Detail = () => {
         ) : (
           <View style={{ paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row", gap: 8 }}>
             <Pressable
+              onPress={handleChatWithSeller}
+              disabled={isCreatingChat}
               style={{
                 width: 52,
                 height: 52,
@@ -824,7 +876,11 @@ const Detail = () => {
                 alignItems: "center",
               }}
             >
-              <MaterialCommunityIcons name="chat-outline" size={22} color="#333" />
+              {isCreatingChat ? (
+                <ActivityIndicator size="small" color="#333" />
+              ) : (
+                <MaterialCommunityIcons name="chat-outline" size={22} color="#333" />
+              )}
             </Pressable>
 
             <Pressable
