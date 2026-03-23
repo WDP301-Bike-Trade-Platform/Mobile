@@ -467,8 +467,8 @@ const Conversation = () => {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         {/* Messages */}
         <FlatList
@@ -483,6 +483,7 @@ const Conversation = () => {
             paddingBottom: 16,
             flexGrow: 1,
           }}
+          scrollEnabled={true}
           onContentSizeChange={() =>
             flatListRef.current?.scrollToEnd({ animated: false })
           }
@@ -508,6 +509,7 @@ const Conversation = () => {
             </View>
           }
           keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
         />
 
         {/* Input area */}
