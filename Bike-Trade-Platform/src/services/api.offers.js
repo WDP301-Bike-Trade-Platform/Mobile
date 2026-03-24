@@ -32,3 +32,12 @@ export const rejectOffer = async (offerId) => {
     throw error;
   }
 };
+
+export const cancelOffer = async (offerId) => {
+  try {
+    const response = await instance.patch(`/offers/${offerId}/cancel`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

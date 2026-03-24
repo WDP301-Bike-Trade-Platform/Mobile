@@ -16,7 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { getChatMessages, sendMessage } from "../services/api.chat";
-import { createOffer, acceptOffer, rejectOffer } from "../services/api.offers";
+import { createOffer, acceptOffer, rejectOffer, cancelOffer } from "../services/api.offers";
 import { useAppContext } from "../provider/AppProvider";
 import { useChatSocket } from "../hooks/useChatSocket";
 
@@ -52,6 +52,7 @@ const Conversation = () => {
   const [offerModalVisible, setOfferModalVisible] = useState(false);
   const [offerAmount, setOfferAmount] = useState("");
   const [submittingOffer, setSubmittingOffer] = useState(false);
+  const [processingOfferId, setProcessingOfferId] = useState(null);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -68,8 +69,8 @@ const Conversation = () => {
       // Backend: { success, data: { total, items: MessageResponse[] } }
       const items = res.data?.items || res.data || [];
       if (Array.isArray(items)) {
-        // Messages are desc order from backend, reverse to oldest-first
-        const ordered = [...items].reverse();
+        // Messages are desc order from backend. Keep it newest-first.
+        const ordered = [...items];
         ordered.forEach((m) => messageIdsRef.current.add(m.messageId));
         setMessages(ordered);
       }
@@ -93,10 +94,7 @@ const Conversation = () => {
       if (messageIdsRef.current.has(message.messageId)) return;
 
       messageIdsRef.current.add(message.messageId);
-      setMessages((prev) => [...prev, message]);
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setMessages((prev) => [message, ...prev]);
     },
     [chatId]
   );
@@ -176,6 +174,39 @@ const Conversation = () => {
   }, []);
 
   /* ── Send message ──────────────────────────────────────────── */
+  const sendTextMessage = async (text) => {
+    if (!text || !chatId) return;
+
+    try {
+      const socketConnected = socketRef.current?.connected;
+      if (socketConnected) {
+        socketRef.current.emit(
+          "sendMessage",
+          { chatId, content: text },
+          (ack) => {
+            if (ack?.success && ack?.data) {
+              const msg = ack.data;
+              if (!messageIdsRef.current.has(msg.messageId)) {
+                messageIdsRef.current.add(msg.messageId);
+                setMessages((prev) => [msg, ...prev]);
+              }
+            }
+          }
+        );
+      } else {
+        const res = await sendMessage(chatId, text);
+        const newMsg = res.data || res;
+        if (newMsg?.messageId && !messageIdsRef.current.has(newMsg.messageId)) {
+          messageIdsRef.current.add(newMsg.messageId);
+          setMessages((prev) => [newMsg, ...prev]);
+        }
+      }
+    } catch (error) {
+      console.log("Error sending text msg:", error);
+      throw error;
+    }
+  };
+
   const handleSendMessage = async () => {
     const text = messageText.trim();
     if (!text || !chatId || sending) return;
@@ -185,45 +216,10 @@ const Conversation = () => {
     emitStopTyping(chatId);
 
     try {
-      const socketConnected = socketRef.current?.connected;
-
-      if (socketConnected) {
-        // Send via Socket.IO — backend will broadcast 'newMessage' back to room
-        // The message will arrive via handleNewMessage, but we also get an ack
-        socketRef.current.emit(
-          "sendMessage",
-          { chatId, content: text },
-          (ack) => {
-            if (ack?.success && ack?.data) {
-              const msg = ack.data;
-              if (!messageIdsRef.current.has(msg.messageId)) {
-                messageIdsRef.current.add(msg.messageId);
-                setMessages((prev) => [...prev, msg]);
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }
-            }
-            setSending(false);
-          }
-        );
-      } else {
-        // Fallback to REST API when socket is not connected
-        const res = await sendMessage(chatId, text);
-        // Backend: { success, message, data: MessageResponse }
-        const newMsg = res.data || res;
-        if (newMsg?.messageId && !messageIdsRef.current.has(newMsg.messageId)) {
-          messageIdsRef.current.add(newMsg.messageId);
-          setMessages((prev) => [...prev, newMsg]);
-        }
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-        setSending(false);
-      }
+      await sendTextMessage(text);
     } catch (error) {
-      console.log("Error sending message:", error);
       setMessageText(text); // restore on failure
+    } finally {
       setSending(false);
     }
   };
@@ -240,7 +236,27 @@ const Conversation = () => {
     setSubmittingOffer(true);
     try {
       const res = await createOffer(listing.id, numericPrice);
-      const offerId = res.offer_id || res.id;
+      // Backend now returns { success: true, data: fullOffer }
+      const fullOfferData = res.data || res;
+      const offerId = fullOfferData.offer_id;
+
+      // Optimistic update
+      const optimisticMessageId = `temp-${Date.now()}`;
+      const optimisticMessage = {
+        messageId: optimisticMessageId,
+        chatId: chatId,
+        senderId: currentUserId,
+        type: "OFFER",
+        offerId,
+        offerStatus: "PENDING",
+        offeredPrice: parsePrice(fullOfferData.offered_price) || numericPrice,
+        listing: fullOfferData.listing || listing,
+        content: "I want this price",
+        imageUrl: null,
+        sentAt: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [optimisticMessage, ...prev]);
 
       if (socketRef.current?.connected) {
         socketRef.current.emit(
@@ -251,8 +267,9 @@ const Conversation = () => {
               const msg = ack.data;
               if (msg.messageId && !messageIdsRef.current.has(msg.messageId)) {
                 messageIdsRef.current.add(msg.messageId);
-                setMessages((prev) => [...prev, msg]);
-                setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 300);
+                setMessages((prev) => 
+                  prev.map(m => m.messageId === optimisticMessageId ? msg : m)
+                );
               }
             }
           }
@@ -263,11 +280,11 @@ const Conversation = () => {
         const newMsg = resMsg.data || resMsg;
         if (newMsg?.messageId && !messageIdsRef.current.has(newMsg.messageId)) {
           messageIdsRef.current.add(newMsg.messageId);
-          setMessages((prev) => [...prev, newMsg]);
+          // Replace optimistic message
+          setMessages((prev) => 
+            prev.map(m => m.messageId === optimisticMessageId ? newMsg : m)
+          );
         }
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 300);
       }
       setOfferModalVisible(false);
       setOfferAmount("");
@@ -280,25 +297,51 @@ const Conversation = () => {
   };
 
   const handleAcceptOffer = async (offerId) => {
+    if (processingOfferId) return;
+    setProcessingOfferId(offerId);
     try {
       await acceptOffer(offerId);
       setMessages((prev) =>
         prev.map((m) => (m.offerId === offerId ? { ...m, offerStatus: "ACCEPTED" } : m))
       );
+      await sendTextMessage("I have accepted your offer. Please proceed to checkout.");
     } catch (error) {
       console.log("Accept error", error);
       Alert.alert("Error", "Could not accept offer.");
+    } finally {
+      setProcessingOfferId(null);
     }
   };
 
   const handleRejectOffer = async (offerId) => {
+    if (processingOfferId) return;
+    setProcessingOfferId(offerId);
     try {
       await rejectOffer(offerId);
       setMessages((prev) =>
         prev.map((m) => (m.offerId === offerId ? { ...m, offerStatus: "REJECTED" } : m))
       );
+      await sendTextMessage("Sorry, I have rejected your offer.");
     } catch (error) {
       console.log("Reject error", error);
+    } finally {
+      setProcessingOfferId(null);
+    }
+  };
+
+  const handleCancelOffer = async (offerId) => {
+    if (processingOfferId) return;
+    setProcessingOfferId(offerId);
+    try {
+      await cancelOffer(offerId);
+      setMessages((prev) =>
+        prev.map((m) => (m.offerId === offerId ? { ...m, offerStatus: "CANCELLED" } : m))
+      );
+    } catch (error) {
+      console.log("Cancel error", error);
+      Alert.alert("Error", "Could not cancel offer.");
+    } finally {
+      setProcessingOfferId(null);
     }
   };
 
@@ -376,10 +419,25 @@ const Conversation = () => {
                );
              })()}
              {isMe ? (
-               <View style={{ marginTop: 8 }}>
-                 {message.offerStatus === "PENDING" && <Text style={{ color: "#d97706", fontSize: 13 }}>Pending seller approval</Text>}
+                <View style={{ marginTop: 8 }}>
+                  {message.offerStatus === "PENDING" && (
+                    <View style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                      <Text style={{ color: "#d97706", fontSize: 13, marginBottom: 4 }}>Pending seller approval</Text>
+                      <Pressable
+                        style={{ backgroundColor: "#fee2e2", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, opacity: processingOfferId === message.offerId ? 0.6 : 1 }}
+                        disabled={processingOfferId === message.offerId}
+                        onPress={() => handleCancelOffer(message.offerId)}
+                      >
+                        {processingOfferId === message.offerId ? (
+                          <ActivityIndicator size="small" color="#dc2626" />
+                        ) : (
+                          <Text style={{ color: "#dc2626", fontWeight: "600", fontSize: 12 }}>Cancel</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  )}
                  {message.offerStatus === "ACCEPTED" && (
-                   <Pressable 
+                   <Pressable
                      style={{ backgroundColor: "#16a34a", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, marginTop: 6 }}
                      onPress={() => {
                        const offerListingId = message.listing?.listing_id || listing?.id || listing?.listing_id;
@@ -401,8 +459,11 @@ const Conversation = () => {
                      </Text>
                    </Pressable>
                  )}
-                 {(message.offerStatus === "REJECTED" || message.offerStatus === "CANCELLED") && (
+                 {(message.offerStatus === "REJECTED") && (
                    <Text style={{ color: "#ff0000ff", fontSize: 13, textAlign: "center" }}>Rejected</Text>
+                 )}
+                 {(message.offerStatus === "CANCELLED") && (
+                   <Text style={{ color: "#ffdd00d7", fontSize: 13, textAlign: "center" }}>Cancelled</Text>
                  )}
                  {message.offerStatus === "DONE" && (
                    <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>
@@ -410,16 +471,16 @@ const Conversation = () => {
                </View>
              ) : (
                <View style={{ marginTop: 8 }}>
-                 {(!message.offerStatus || message.offerStatus === "PENDING") && (
-                   <View style={{ flexDirection: "row", gap: 8 }}>
-                     <Pressable style={{ backgroundColor: "#389cfa", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, flex: 1 }} onPress={() => handleAcceptOffer(message.offerId)}>
-                       <Text style={{ color: "#fff", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Accept</Text>
-                     </Pressable>
-                     <Pressable style={{ backgroundColor: "#f3f4f6", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, flex: 1 }} onPress={() => handleRejectOffer(message.offerId)}>
-                       <Text style={{ color: "#dc2626", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Reject</Text>
-                     </Pressable>
-                   </View>
-                 )}
+                  {(!message.offerStatus || message.offerStatus === "PENDING") && (
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <Pressable style={{ backgroundColor: "#389cfa", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, flex: 1, opacity: processingOfferId === message.offerId ? 0.6 : 1 }} disabled={processingOfferId === message.offerId} onPress={() => handleAcceptOffer(message.offerId)}>
+                        {processingOfferId === message.offerId ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: "#fff", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Accept</Text>}
+                      </Pressable>
+                      <Pressable style={{ backgroundColor: "#f3f4f6", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, flex: 1, opacity: processingOfferId === message.offerId ? 0.6 : 1 }} disabled={processingOfferId === message.offerId} onPress={() => handleRejectOffer(message.offerId)}>
+                        {processingOfferId === message.offerId ? <ActivityIndicator size="small" color="#dc2626" /> : <Text style={{ color: "#dc2626", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Reject</Text>}
+                      </Pressable>
+                    </View>
+                  )}
                  {message.offerStatus === "ACCEPTED" && <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Accepted</Text>}
                  {(message.offerStatus === "REJECTED" || message.offerStatus === "CANCELLED") && <Text style={{ color: "#ff0000ff", textAlign: "center", fontSize: 13 }}>Rejected</Text>}
                  {message.offerStatus === "DONE" && <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>}
@@ -751,13 +812,11 @@ const Conversation = () => {
             flexGrow: 1,
           }}
           scrollEnabled={true}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: false })
-          }
-          ListFooterComponent={isTyping ? <TypingIndicator /> : null}
+          inverted={true}
+          ListHeaderComponent={isTyping ? <TypingIndicator /> : null}
           ListEmptyComponent={
             <View
-              style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+              style={{ flex: 1, justifyContent: "center", alignItems: "center", transform: [{ scaleY: -1 }] }}
             >
               <MaterialCommunityIcons
                 name="chat-outline"
