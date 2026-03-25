@@ -112,7 +112,7 @@ const GuestTabs = () => {
         headerShown: false,
       })}
     >
-      <Tabs.Screen name="Home" component={Home} options={{ title: "Home", headerShown: true }} />
+      <Tabs.Screen name="Home" component={Home} options={{ title: "Home", headerShown: false }} />
       <Tabs.Screen
         name="LoginTab"
         component={Login}
