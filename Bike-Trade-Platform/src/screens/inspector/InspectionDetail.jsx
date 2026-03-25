@@ -9,12 +9,15 @@ import {
   TextInput,
   Linking,
   Modal,
+  Image,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { Calendar } from "react-native-calendars";
+import * as ImagePicker from "expo-image-picker";
 import HeaderBar from "../../component/HeaderBar";
+import { uploadImageToSupabase } from "../../services/api.supabase";
 import {
   getInspectionDetail,
   updateInspection,
@@ -46,7 +49,7 @@ const InspectionDetail = () => {
 
   // Report form
   const [resultStatus, setResultStatus] = useState("");
-  const [reportUrl, setReportUrl] = useState("");
+  const [reportImage, setReportImage] = useState(null);
   const [notes, setNotes] = useState("");
   const [showReportForm, setShowReportForm] = useState(false);
 
@@ -72,8 +75,39 @@ const InspectionDetail = () => {
   useFocusEffect(
     useCallback(() => {
       fetchDetail();
+      requestMediaPermissions();
     }, [fetchDetail])
   );
+
+  const requestMediaPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission denied", "We need camera roll permissions to select images.");
+    }
+  };
+
+  const pickReportImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultiple: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setReportImage({
+          uri: result.assets[0].uri,
+          type: "image/jpeg",
+        });
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image: " + error.message);
+    }
+  };
+
+  const removeReportImage = () => {
+    setReportImage(null);
+  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "Not set";
@@ -200,15 +234,34 @@ const InspectionDetail = () => {
       return;
     }
 
+    if (!reportImage) {
+      Alert.alert("Error", "Please select an inspection report image");
+      return;
+    }
+
     try {
       setActionLoading(true);
+
+      // Upload image to Supabase
+      let reportUrl = "";
+      if (reportImage && !reportImage.isExisting) {
+        console.log("Uploading report image to Supabase...");
+        reportUrl = await uploadImageToSupabase(reportImage.uri);
+        console.log("Uploaded report image URL:", reportUrl);
+      } else if (reportImage?.uri) {
+        reportUrl = reportImage.uri;
+      }
+
       await updateInspectionReport(inspectionId, {
         resultStatus,
-        ...(reportUrl.trim() && { reportUrl: reportUrl.trim() }),
+        ...(reportUrl && { reportUrl }),
         ...(notes.trim() && { notes: notes.trim() }),
       });
       Alert.alert("Success", "Inspection report submitted");
       setShowReportForm(false);
+      setReportImage(null);
+      setResultStatus("");
+      setNotes("");
       fetchDetail();
     } catch (error) {
       Alert.alert(
@@ -642,34 +695,88 @@ const InspectionDetail = () => {
               })}
             </View>
 
-            {/* Report URL */}
+            {/* Report Image */}
             <Text
               style={{
                 fontSize: 13,
                 fontWeight: "600",
                 color: "#333",
-                marginBottom: 6,
+                marginBottom: 8,
               }}
             >
-              Report URL
+              Inspection Report Image *
             </Text>
-            <TextInput
-              value={reportUrl}
-              onChangeText={setReportUrl}
-              placeholder="https://..."
-              placeholderTextColor="#bbb"
-              autoCapitalize="none"
-              style={{
-                borderWidth: 1,
-                borderColor: "#e5e7eb",
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontSize: 14,
-                color: "#333",
-                marginBottom: 12,
-              }}
-            />
+
+            {/* Pick Image Button */}
+            {!reportImage && (
+              <Pressable
+                onPress={pickReportImage}
+                disabled={actionLoading}
+                style={{
+                  borderWidth: 2,
+                  borderStyle: "dashed",
+                  borderColor: "#359EFF",
+                  borderRadius: 8,
+                  paddingVertical: 24,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginBottom: 12,
+                  opacity: actionLoading ? 0.6 : 1,
+                }}
+              >
+                <MaterialCommunityIcons name="image-plus" size={32} color="#359EFF" />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#359EFF", marginTop: 8 }}>
+                  Select Report Image
+                </Text>
+                <Text style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                  Tap to select image
+                </Text>
+              </Pressable>
+            )}
+
+            {/* Selected Image Preview */}
+            {reportImage && (
+              <View
+                style={{
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  marginBottom: 12,
+                  position: "relative",
+                }}
+              >
+                <Image
+                  source={{ uri: reportImage.uri }}
+                  style={{ width: "100%", height: 200 }}
+                  resizeMode="cover"
+                />
+                <Pressable
+                  onPress={removeReportImage}
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    borderRadius: 20,
+                    padding: 8,
+                  }}
+                >
+                  <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                </Pressable>
+                <Pressable
+                  onPress={pickReportImage}
+                  style={{
+                    position: "absolute",
+                    bottom: 8,
+                    right: 8,
+                    backgroundColor: "rgba(53, 158, 255, 0.9)",
+                    borderRadius: 20,
+                    padding: 8,
+                  }}
+                >
+                  <MaterialCommunityIcons name="pencil" size={18} color="#fff" />
+                </Pressable>
+              </View>
+            )}
 
             {/* Notes */}
             <Text
