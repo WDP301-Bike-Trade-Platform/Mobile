@@ -385,9 +385,30 @@ const CreateProduct = () => {
         <InputField label="Model" field="model" placeholder="e.g., Escape 3" required value={formData.model} onChangeText={(value) => handleInputChange("model", value)} />
         <InputField label="Year" field="year" placeholder={new Date().getFullYear().toString()} keyboardType="numeric" required value={formData.year} onChangeText={(value) => handleInputChange("year", value)} />
         <InputField label="Price (₫)" field="price" placeholder="8500000" keyboardType="numeric" required value={formData.price} onChangeText={(value) => handleInputChange("price", value)} />
-        <Text style={{ fontSize: 12, color: "#666", marginBottom: 16, marginTop: -8 }}>
-          A 7% markup fee will be deducted from the selling price.
-        </Text>
+        
+        {formData.price && !isNaN(parseFloat(formData.price)) && parseFloat(formData.price) > 0 && (
+          <View style={{ backgroundColor: '#f8fafc', padding: 14, borderRadius: 10, marginBottom: 16, marginTop: -4, borderWidth: 1, borderColor: '#e2e8f0' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 13, color: '#64748b' }}>Selling Price</Text>
+              <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600' }}>
+                ₫{parseFloat(formData.price).toLocaleString("vi-VN")}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ fontSize: 13, color: '#ef4444' }}>Platform Fee (7%)</Text>
+              <Text style={{ fontSize: 13, color: '#ef4444', fontWeight: '600' }}>
+                - ₫{(parseFloat(formData.price) * 0.07).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
+              </Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: '#e2e8f0', marginBottom: 10 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: '#0f172a', fontWeight: '700' }}>You will receive</Text>
+              <Text style={{ fontSize: 16, color: '#16a34a', fontWeight: '800' }}>
+                ₫{(parseFloat(formData.price) * 0.93).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <Text style={{ fontSize: 16, fontWeight: "bold", color: "#222", marginBottom: 16, marginTop: 16 }}>
           Specifications
