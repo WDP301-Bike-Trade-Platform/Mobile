@@ -380,7 +380,7 @@ const CreateProduct = () => {
           />
         </View>
 
-        <InputField label="Title" field="title" placeholder="e.g., Bán xe đạp đua Giant nhanh êm" required value={formData.title} onChangeText={(value) => handleInputChange("title", value)} />
+        <InputField label="Title" field="title" placeholder="e.g., Sell Bicycle " required value={formData.title} onChangeText={(value) => handleInputChange("title", value)} />
         <InputField label="Brand" field="brand" placeholder="e.g., Trek, Giant, Specialized" required value={formData.brand} onChangeText={(value) => handleInputChange("brand", value)} />
         <InputField label="Model" field="model" placeholder="e.g., Escape 3" required value={formData.model} onChangeText={(value) => handleInputChange("model", value)} />
         <InputField label="Year" field="year" placeholder={new Date().getFullYear().toString()} keyboardType="numeric" required value={formData.year} onChangeText={(value) => handleInputChange("year", value)} />
