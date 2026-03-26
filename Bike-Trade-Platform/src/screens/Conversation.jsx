@@ -816,13 +816,15 @@ const Conversation = () => {
           ListHeaderComponent={isTyping ? <TypingIndicator /> : null}
           ListEmptyComponent={
             <View
-              style={{ flex: 1, justifyContent: "center", alignItems: "center", transform: [{ scaleY: -1 }] }}
+              style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
             >
-              <MaterialCommunityIcons
-                name="chat-outline"
-                size={48}
-                color="#d1d5db"
-              />
+              <View >
+                <MaterialCommunityIcons
+                  name="chat-outline"
+                  size={48}
+                  color="#d1d5db"
+                />
+              </View>
               <Text
                 style={{
                   fontSize: 14,

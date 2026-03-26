@@ -459,24 +459,26 @@ const Login = () => {
             }}
           >
             <View style={{ alignItems: "center" }}>
+            <Text
+              style={{
+                fontSize: 14,
+                color: "#6b7280",
+                lineHeight: 20,
+              }}
+            >
+              Don't have an account?{" "}
               <Text
+                onPress={() => navigation.navigate("Register")}
                 style={{
                   fontSize: 14,
-                  color: "#6b7280",
+                  fontWeight: "700",
+                  color: "#389cfa",
+                  lineHeight: 20,
                 }}
               >
-                Don't have an account?{" "}
-                <Pressable onPress={() => navigation.navigate("Register")}>
-                  <Text
-                    style={{
-                      fontWeight: "700",
-                      color: "#389cfa",
-                    }}
-                  >
-                    Register
-                  </Text>
-                </Pressable>
+                Register
               </Text>
+            </Text>
             </View>
           </View>
         </ScrollView>

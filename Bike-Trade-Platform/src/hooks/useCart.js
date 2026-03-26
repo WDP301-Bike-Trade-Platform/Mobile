@@ -36,7 +36,7 @@ export const useCart = () => {
   const removeItem = useCallback(async (cartItemId) => {
     try {
       await dispatch(removeFromCart(cartItemId)).unwrap();
-      Alert.alert('Thành công', 'Đã xóa sản phẩm khỏi giỏ hàng');
+      Alert.alert('Success', 'Item removed from cart!');
     } catch (error) {
       console.error('Error removing item:', error);
       Alert.alert('Error', 'Failed to remove item');
@@ -46,7 +46,7 @@ export const useCart = () => {
   const clearCartItems = useCallback(async () => {
     try {
       await dispatch(clearCart()).unwrap();
-      Alert.alert('Thành công', 'Đã xóa toàn bộ giỏ hàng');
+      Alert.alert('Success', 'Cart cleared successfully!');
     } catch (error) {
       console.error('Error clearing cart:', error);
       Alert.alert('Error', 'Failed to clear cart');

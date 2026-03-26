@@ -35,6 +35,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -117,18 +118,39 @@ const Home = () => {
     }
   };
 
-  // Filter products by category
+  // Filter products by category and search query
   useEffect(() => {
-    if (selectedCategory === "All") {
-      setFilteredBikes(allProducts);
-    } else {
-      // Filter by brand/category name
-      const filtered = allProducts?.filter(
-        (product) => product.vehicle?.brand === selectedCategory
+    let filtered = allProducts;
+
+    // Filter by category
+    if (selectedCategory !== "All") {
+      // Convert "Other" back to "Khác" for API data matching
+      const categoryToMatch = selectedCategory === "Other" ? "Khác" : selectedCategory;
+      filtered = filtered?.filter(
+        (product) => product.vehicle?.brand === categoryToMatch || product.vehicle?.brand === selectedCategory
       );
-      setFilteredBikes(filtered || []);
     }
-  }, [selectedCategory, allProducts]);
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered?.filter((product) => {
+        const title = (product.title || "").toLowerCase();
+        const brand = (product.vehicle?.brand || "").toLowerCase();
+        const model = (product.vehicle?.model || "").toLowerCase();
+        const bikeType = (product.vehicle?.bike_type || "").toLowerCase();
+        
+        return (
+          title.includes(query) ||
+          brand.includes(query) ||
+          model.includes(query) ||
+          bikeType.includes(query)
+        );
+      });
+    }
+
+    setFilteredBikes(filtered || []);
+  }, [selectedCategory, allProducts, searchQuery]);
 
   const navigateToDetail = (product) => {
     navigation.navigate("Detail", { product: product });
@@ -352,7 +374,7 @@ const Home = () => {
             </View>
             <View>
               <Text style={{ fontSize: 18, fontWeight: "bold", color: "#111" }}>
-                CycleTrade
+                Bike Trade 
               </Text>
               <Text style={{ fontSize: 10, color: "#999", marginTop: 2 }}>
                 Thu Duc, HCM City
@@ -430,17 +452,27 @@ const Home = () => {
             }}
           >
             <MaterialCommunityIcons name="magnify" size={20} color="#999" />
-            <Pressable
+            <TextInput
               style={{
                 flex: 1,
                 paddingHorizontal: 8,
                 height: 40,
-                justifyContent: "center",
+                fontSize: 14,
+                color: "#222",
               }}
-            >
-              <TextInput style={{ fontSize: 14, color: "#999" }} placeholder="Search for Trek, Specialized, etc." />
-            </Pressable>
-            <MaterialCommunityIcons name="tune" size={20} color="#999" />
+              placeholder="Search for Trek, Specialized, etc."
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              clearButtonMode="while-editing"
+            />
+            {searchQuery ? (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <MaterialCommunityIcons name="close" size={20} color="#999" />
+              </Pressable>
+            ) : (
+              <MaterialCommunityIcons name="tune" size={20} color="#999" />
+            )}
           </View>
         </View>
 
@@ -451,32 +483,35 @@ const Home = () => {
           style={{ paddingHorizontal: 16 }}
           contentContainerStyle={{ gap: 8 }}
         >
-          {categories.map((cat) => (
-            <Pressable
-              key={cat.category_id || cat.key}
-              onPress={() => setSelectedCategory(cat.name)}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 20,
-                backgroundColor:
-                  selectedCategory === cat.name ? "#359EFF" : "#fff",
-                borderWidth: selectedCategory === cat.name ? 0 : 1,
-                borderColor: "#ddd",
-              }}
-            >
-              <Text
+          {categories.map((cat) => {
+            const displayName = cat.name === "Khác" ? "Other" : cat.name;
+            return (
+              <Pressable
+                key={cat.category_id || cat.key}
+                onPress={() => setSelectedCategory(displayName)}
                 style={{
-                  fontSize: 12,
-                  fontWeight: "500",
-                  color:
-                    selectedCategory === cat.name ? "#000" : "#666",
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor:
+                    selectedCategory === displayName ? "#359EFF" : "#fff",
+                  borderWidth: selectedCategory === displayName ? 0 : 1,
+                  borderColor: "#ddd",
                 }}
               >
-                {cat.name}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "500",
+                    color:
+                      selectedCategory === displayName ? "#000" : "#666",
+                  }}
+                >
+                  {displayName}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
 
