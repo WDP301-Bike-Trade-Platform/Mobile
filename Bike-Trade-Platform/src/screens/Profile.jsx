@@ -118,7 +118,6 @@ const Profile = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 120,
         }}
       >
         {/* Profile Header */}
@@ -154,7 +153,7 @@ const Profile = () => {
             >
               <Image
                 source={{
-                  uri: userProfile?.profile?.avatar_url || "https://via.placeholder.com/112",
+                  uri: userProfile?.profile?.avatar_url || "https://img.freepik.com/premium-vector/vector-flat-illustration-grayscale-avatar-user-profile-person-icon-gender-neutral-silhouette-profile-picture-suitable-social-media-profiles-icons-screensavers-as-templatex9xa_719432-2210.jpg?semt=ais_hybrid&w=740&q=80",
                 }}
                 style={{
                   width: "100%",
@@ -232,59 +231,6 @@ const Profile = () => {
           </Pressable>
         </View>
 
-        {/* Stats Dashboard */}
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-          }}
-        >
-          {[
-            { label: "Listings", value: userStats.listings },
-            { label: "Wishlist", value: userStats.wishlist },
-            { label: "Orders", value: userStats.orders },
-          ].map((stat, index) => (
-            <View
-              key={index}
-              style={{
-                flex: 1,
-                backgroundColor: "#fff",
-                borderRadius: 16,
-                paddingVertical: 16,
-                alignItems: "center",
-                gap: 8,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.08,
-                shadowRadius: 2,
-                elevation: 1,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 24,
-                  fontWeight: "800",
-                  color: "#389cfa",
-                }}
-              >
-                {stat.value}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "700",
-                  color: "#6b7280",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {stat.label}
-              </Text>
-            </View>
-          ))}
-        </View>
 
         {/* Menu Group 1 */}
         <View
@@ -307,12 +253,12 @@ const Profile = () => {
             onPress={() => navigation.navigate("MyOrders")}
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
-          <MenuItem
+          {/* <MenuItem
             icon="truck-delivery"
             label="My Shipments"
             onPress={() => navigation.navigate("BuyerShipments")}
-          />
-          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
+          /> */}
+          {/* <View style={{ height: 1, backgroundColor: "#f3f4f6" }} /> */}
           <MenuItem
             icon="heart"
             label="Bicycle Wishlist"
@@ -372,33 +318,6 @@ const Profile = () => {
           />
         </View>
 
-        {/* Menu Group 2 */}
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginVertical: 8,
-            backgroundColor: "#fff",
-            borderRadius: 16,
-            overflow: "hidden",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.08,
-            shadowRadius: 2,
-            elevation: 1,
-          }}
-        >
-          <MenuItem
-            icon="cog"
-            label="App Settings"
-            onPress={() => alert("Navigate to Settings")}
-          />
-          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
-          <MenuItem
-            icon="help-circle"
-            label="Help & Support"
-            onPress={() => alert("Navigate to Help")}
-          />
-        </View>
 
         {/* Logout Button */}
         <Pressable
@@ -427,8 +346,6 @@ const Profile = () => {
             Log Out
           </Text>
         </Pressable>
-
-        
       </ScrollView>
     </SafeAreaView>
   );
