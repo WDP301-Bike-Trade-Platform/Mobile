@@ -13,6 +13,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { register as registerApi } from "../services/api.auth";
 
 const Register = () => {
   const navigation = useNavigation();
@@ -92,16 +93,30 @@ const Register = () => {
 
     setIsLoading(true);
     try {
-      // Simulate registration API call
-      setTimeout(() => {
-        setIsLoading(false);
-        // Show success message and navigate to Login
-        alert("Registration successful! You can now login with your account.");
-        navigation.navigate("Login");
-      }, 1500);
+      const response = await registerApi({
+        full_name: fullName,
+        email: email,
+        phone: phone,
+        password: password,
+      });
+
+      console.log("Registration response:", response);
+
+      setIsLoading(false);
+      alert("Registration successful! You can now login with your account.");
+      navigation.navigate("Login");
     } catch (error) {
       setIsLoading(false);
-      alert("Registration failed. Please try again.");
+      console.log("Registration error:", error);
+      
+      if (error.response) {
+        const message = error.response.data?.message || error.response.data?.error;
+        alert(message || "Registration failed. Please try again.");
+      } else if (error.request) {
+        alert("Network error. Please check your connection.");
+      } else {
+        alert("Registration failed. Please try again.");
+      }
     }
   };
 
