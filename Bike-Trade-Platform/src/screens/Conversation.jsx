@@ -399,9 +399,9 @@ const Conversation = () => {
              {(() => {
                const offerListing = message.listing || listing;
                if (!offerListing) return null;
-               const title = message.listing?.vehicle 
-                 ? `${message.listing.vehicle.brand} ${message.listing.vehicle.model}` 
-                 : (offerListing.title || `${offerListing.brand} ${offerListing.model}`);
+                const title = message.listing?.title || offerListing.title || (message.listing?.vehicle 
+                  ? `${message.listing.vehicle.brand} ${message.listing.vehicle.model}` 
+                  : `${offerListing.brand} ${offerListing.model}`);
                const mediaList = message.listing?.media || [];
                const imageUrl = mediaList.length > 0 ? mediaList[0].file_url : (offerListing.images?.[0] || offerListing.image || 'https://placehold.co/100x100');
                return (
@@ -749,7 +749,7 @@ const Conversation = () => {
         <View style={{ backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 10 }}>
           <Image source={{ uri: listing.images?.[0] || listing.image || 'https://placehold.co/100x100' }} style={{ width: 44, height: 44, borderRadius: 8 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }} numberOfLines={1}>{listing.title || `${listing.brand} ${listing.model}`}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }} numberOfLines={1}>{listing.title || (listing.vehicle ? `${listing.vehicle.brand} ${listing.vehicle.model}` : `${listing.brand} ${listing.model}`)}</Text>
             <Text style={{ fontSize: 14, fontWeight: '700', color: '#389cfa', marginTop: 2 }}>
               {parsedListingPrice ? `${parsedListingPrice.toLocaleString("vi-VN")} ₫` : "Contact for price"}
             </Text>

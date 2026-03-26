@@ -105,7 +105,6 @@ const ShipmentTracking = ({ navigation, route }) => {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8', justifyContent: 'center', alignItems: 'center' }}>
-        <HeaderBar title="Track Shipment" onBack={() => navigation.goBack()} />
         <ActivityIndicator size="large" color="#389cfa" />
         <Text style={{ marginTop: 16, fontSize: 16, color: '#6b7280' }}>Loading tracking details...</Text>
       </SafeAreaView>

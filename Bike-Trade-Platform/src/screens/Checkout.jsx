@@ -194,7 +194,7 @@ const Checkout = ({ route, navigation }) => {
                   style={{ fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 4 }}
                   numberOfLines={2}
                 >
-                  {item.listing?.vehicle?.brand} {item.listing?.vehicle?.model}
+                  {item.listing?.title || `${item.listing?.vehicle?.brand || ''} ${item.listing?.vehicle?.model || ''}`.trim()}
                 </Text>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: '#389cfa' }}>
                   đ{formatPrice(item.listing?.vehicle?.price || 0)}

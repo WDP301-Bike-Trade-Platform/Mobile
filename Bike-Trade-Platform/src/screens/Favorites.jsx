@@ -160,7 +160,7 @@ const Favorites = () => {
                 }}
                 numberOfLines={1}
               >
-                {vehicleData.brand} {vehicleData.model}
+                {bike.title || `${vehicleData.brand} ${vehicleData.model}`}
               </Text>
             </View>
 

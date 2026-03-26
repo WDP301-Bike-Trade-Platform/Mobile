@@ -411,7 +411,7 @@ const OrderDetail = ({ route, navigation }) => {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 14, fontWeight: '600', color: '#111', marginBottom: 4 }}>
-                        {item.vehicle?.brand} {item.vehicle?.model}
+                        {item.listing?.title || `${item.vehicle?.brand || ''} ${item.vehicle?.model || ''}`.trim()}
                       </Text>
                       <Text style={{ fontSize: 12, color: '#6b7280' }}>
                         {[item.vehicle?.year, item.vehicle?.bike_type, item.vehicle?.condition].filter(Boolean).join(' • ')}

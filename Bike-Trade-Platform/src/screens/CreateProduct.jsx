@@ -70,6 +70,7 @@ const CreateProduct = () => {
   // Form fields
   const [formData, setFormData] = useState({
     category_id: "",
+    title: "",
     brand: "",
     model: "",
     year: new Date().getFullYear().toString(),
@@ -118,6 +119,7 @@ const CreateProduct = () => {
     
     setFormData({
       category_id: productData.vehicle?.category_id || "",
+      title: productData.title || "",
       brand: productData.vehicle?.brand || "",
       model: productData.vehicle?.model || "",
       year: productData.vehicle?.year?.toString() || new Date().getFullYear().toString(),
@@ -211,11 +213,9 @@ const CreateProduct = () => {
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.category_id || !formData.brand || !formData.model || !formData.price || 
-        !formData.year || !formData.bike_type || !formData.material || !formData.brake_type ||
-        !formData.usage_level || !formData.mileage_km || !formData.groupset || 
-        !formData.frame_size || !formData.frame_serial || !formData.description) {
-      Alert.alert("Error", "Please fill in all required fields");
+    if (!formData.title || !formData.brand || !formData.model || !formData.price || 
+        !formData.year || !formData.bike_type || !formData.material || !formData.brake_type) {
+      Alert.alert("Error", "Please fill in all required fields (*)");
       return;
     }
 
@@ -234,10 +234,12 @@ const CreateProduct = () => {
     }
 
     // Validate mileage
-    const mileageNum = parseInt(formData.mileage_km);
-    if (isNaN(mileageNum) || mileageNum < 0) {
-      Alert.alert("Error", "Mileage must be a valid positive number");
-      return;
+    if (formData.mileage_km && formData.mileage_km.trim() !== "") {
+      const mileageNum = parseInt(formData.mileage_km);
+      if (isNaN(mileageNum) || mileageNum < 0) {
+        Alert.alert("Error", "Mileage must be a valid positive number");
+        return;
+      }
     }
 
     // Validate images (only for new listings)
@@ -267,7 +269,8 @@ const CreateProduct = () => {
       }
 
       const submissionData = {
-        category_id: formData.category_id,
+        category_id: formData.category_id || undefined,
+        title: formData.title,
         brand: formData.brand,
         model: formData.model,
         year: parseInt(formData.year),
@@ -275,15 +278,15 @@ const CreateProduct = () => {
         bike_type: formData.bike_type,
         material: formData.material,
         brake_type: formData.brake_type,
-        wheel_size: formData.wheel_size,
-        usage_level: formData.usage_level,
-        mileage_km: parseInt(formData.mileage_km),
-        groupset: formData.groupset,
-        frame_size: formData.frame_size,
+        wheel_size: formData.wheel_size || undefined,
+        usage_level: formData.usage_level || undefined,
+        mileage_km: formData.mileage_km && formData.mileage_km.trim() !== "" ? parseInt(formData.mileage_km) : undefined,
+        groupset: formData.groupset || undefined,
+        frame_size: formData.frame_size || undefined,
         is_original: formData.is_original,
         has_receipt: formData.has_receipt,
-        frame_serial: formData.frame_serial,
-        description: formData.description,
+        frame_serial: formData.frame_serial || undefined,
+        description: formData.description || undefined,
         images: imageUrls,
       };
       
@@ -364,7 +367,7 @@ const CreateProduct = () => {
         {/* Category Dropdown */}
         <View style={{ marginBottom: 16 }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
-           Category <Text style={{ color: "#FF4444" }}>*</Text>
+           Category
           </Text>
           <Dropdown
             data={(categories || []).map((category) => ({
@@ -377,6 +380,7 @@ const CreateProduct = () => {
           />
         </View>
 
+        <InputField label="Title" field="title" placeholder="e.g., Bán xe đạp đua Giant nhanh êm" required value={formData.title} onChangeText={(value) => handleInputChange("title", value)} />
         <InputField label="Brand" field="brand" placeholder="e.g., Trek, Giant, Specialized" required value={formData.brand} onChangeText={(value) => handleInputChange("brand", value)} />
         <InputField label="Model" field="model" placeholder="e.g., Escape 3" required value={formData.model} onChangeText={(value) => handleInputChange("model", value)} />
         <InputField label="Year" field="year" placeholder={new Date().getFullYear().toString()} keyboardType="numeric" required value={formData.year} onChangeText={(value) => handleInputChange("year", value)} />
@@ -390,126 +394,27 @@ const CreateProduct = () => {
         </Text>
 
         <InputField label="Bike Type" field="bike_type" placeholder="e.g., ROAD, MOUNTAIN, HYBRID" required value={formData.bike_type} onChangeText={(value) => handleInputChange("bike_type", value)} />
-        {/* Material Dropdown */}
-        {/* <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
-            Material <Text style={{ color: "#FF4444" }}>*</Text>
-          </Text>
-          <View style={{
-            borderWidth: 1,
-            borderColor: "#ddd",
-            borderRadius: 8,
-            overflow: "hidden",
-          }}>
-            <RNPickerSelect onValueChange={(value) => handleInputChange("material", value)} value={formData.material} placeholder={{ label: '-- Select material --', value: '' }} items={[
-              { label: 'Carbon', value: 'CARBON' },
-              { label: 'Aluminum', value: 'ALUMINUM' },
-              { label: 'Steel', value: 'STEEL' },
-            ]} style={{
-              inputIOS: {
-                height: 50,
-                paddingHorizontal: 12,
-                paddingVertical: 14,
-                fontSize: 14,
-                color: '#222',
-              },
-              inputAndroid: {
-                height: 50,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                fontSize: 14,
-                color: '#222',
-              },
-            }} />
-          </View>
-        </View> */}
-
-        {/* Brake Type Dropdown */}
-        {/* <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
-            Brake Type <Text style={{ color: "#FF4444" }}>*</Text>
-          </Text>
-          <View style={{
-            borderWidth: 1,
-            borderColor: "#ddd",
-            borderRadius: 8,
-            overflow: "hidden",
-          }}>
-            <RNPickerSelect onValueChange={(value) => handleInputChange("brake_type", value)} value={formData.brake_type} placeholder={{ label: '-- Select brake type --', value: '' }} items={[
-              { label: 'Disc Brake', value: 'DISC' },
-              { label: 'Rim Brake', value: 'RIM' },
-            ]} style={{
-              inputIOS: {
-                height: 50,
-                paddingHorizontal: 12,
-                paddingVertical: 14,
-                fontSize: 14,
-                color: '#222',
-              },
-              inputAndroid: {
-                height: 50,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                fontSize: 14,
-                color: '#222',
-              },
-            }} />
-          </View>
-        </View> */}
+        
         <InputField label="Material" field="material" placeholder="e.g., ALUMINUM, STEEL, CARBON" required value={formData.material} onChangeText={(value) => handleInputChange("material", value)} />
         <InputField label="Brake Type" field="brake_type" placeholder="e.g., RIM, DISC, V-BRAKE" required value={formData.brake_type} onChangeText={(value) => handleInputChange("brake_type", value)} />
-        <InputField label="Wheel Size" field="wheel_size" placeholder='e.g., 700c, 26", 29"' required value={formData.wheel_size} onChangeText={(value) => handleInputChange("wheel_size", value)} />
-        <InputField label="Usage Level" field="usage_level" placeholder="e.g., LIGHT, MODERATE, HEAVY" required value={formData.usage_level} onChangeText={(value) => handleInputChange("usage_level", value)} />   
-        {/* Usage Level Dropdown */}
-        {/* <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#222", marginBottom: 6 }}>
-            Usage Level <Text style={{ color: "#FF4444" }}>*</Text>
-          </Text>
-          <View style={{
-            borderWidth: 1,
-            borderColor: "#ddd",
-            borderRadius: 8,
-            overflow: "hidden",
-          }}>
-            
-            <RNPickerSelect onValueChange={(value) => handleInputChange("usage_level", value)} value={formData.usage_level} placeholder={{ label: '-- Select usage level --', value: '' }} items={[
-              { label: 'Light (Occasional rides)', value: 'LIGHT' },
-              { label: 'Medium (Regular use)', value: 'MEDIUM' },
-              { label: 'Heavy (Intensive use)', value: 'HEAVY' },
-            ]} style={{
-              inputIOS: {
-                height: 50,
-                paddingHorizontal: 12,
-                paddingVertical: 14,
-                fontSize: 14,
-                color: '#222',
-              },
-              inputAndroid: {
-                height: 50,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                fontSize: 14,
-                color: '#222',
-              },
-            }} />
-          </View>
-        </View> */}
+        <InputField label="Wheel Size" field="wheel_size" placeholder='e.g., 700c, 26", 29"' value={formData.wheel_size} onChangeText={(value) => handleInputChange("wheel_size", value)} />
+        <InputField label="Usage Level" field="usage_level" placeholder="e.g., LIGHT, MODERATE, HEAVY" value={formData.usage_level} onChangeText={(value) => handleInputChange("usage_level", value)} />   
+       
 
-        <InputField label="Mileage (km)" field="mileage_km" placeholder="1200" keyboardType="numeric" required value={formData.mileage_km} onChangeText={(value) => handleInputChange("mileage_km", value)} />
-        <InputField label="Groupset" field="groupset" placeholder="e.g., Shimano 105" required value={formData.groupset} onChangeText={(value) => handleInputChange("groupset", value)} />
-        <InputField label="Frame Size" field="frame_size" placeholder="e.g., S, M, L, XL" required value={formData.frame_size} onChangeText={(value) => handleInputChange("frame_size", value)} />
+        <InputField label="Mileage (km)" field="mileage_km" placeholder="1200" keyboardType="numeric" value={formData.mileage_km} onChangeText={(value) => handleInputChange("mileage_km", value)} />
+        <InputField label="Groupset" field="groupset" placeholder="e.g., Shimano 105" value={formData.groupset} onChangeText={(value) => handleInputChange("groupset", value)} />
+        <InputField label="Frame Size" field="frame_size" placeholder="e.g., S, M, L, XL" value={formData.frame_size} onChangeText={(value) => handleInputChange("frame_size", value)} />
 
         <Text style={{ fontSize: 16, fontWeight: "bold", color: "#222", marginBottom: 16, marginTop: 16 }}>
           Condition & Info
         </Text>
 
-        <InputField label="Frame Serial" field="frame_serial" placeholder="Serial number" value={formData.frame_serial} required  onChangeText={(value) => handleInputChange("frame_serial", value)} />
+        <InputField label="Frame Serial" field="frame_serial" placeholder="Serial number" value={formData.frame_serial} onChangeText={(value) => handleInputChange("frame_serial", value)} />
         <InputField
           label="Description"
           field="description"
           placeholder="Describe the bike condition, history, and any special features..."
           multiline={true}
-          required 
           value={formData.description}
           onChangeText={(value) => handleInputChange("description", value)}
         />

@@ -325,11 +325,11 @@ const Profile = () => {
             onPress={() => navigation.navigate("ManageAddresses")}
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
-          <MenuItem
+          {/* <MenuItem
             icon="receipt"
             label="Transaction History"
             onPress={() => alert("Navigate to Transaction History")}
-          />
+          /> */}
         </View>
 
         {/* Seller Menu Group */}
@@ -359,11 +359,11 @@ const Profile = () => {
             onPress={() => navigation.navigate("MyInspections")}
           />
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
-          <MenuItem
+          {/* <MenuItem
             icon="truck"
             label="Seller Orders"
             onPress={() => navigation.navigate("SellerOrders")}
-          />
+          /> */}
           <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
           <MenuItem
             icon="bell"

@@ -186,7 +186,7 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
           }}
           numberOfLines={2}
         >
-          {order.listing?.title || 'N/A'}
+          {order.listing?.title || (order.listing?.vehicle ? `${order.listing.vehicle.brand} ${order.listing.vehicle.model}` : 'N/A')}
         </Text>
         {order.listing.seller && (
           <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 4 }}>

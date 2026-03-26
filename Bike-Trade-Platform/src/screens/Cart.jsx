@@ -79,8 +79,10 @@ const Cart = ({ navigation }) => {
   };
 
   const getItemTitle = (item) => {
-    // Backend CartItemView: item.listing.vehicle.brand, .model
-    const vehicle = item.listing?.vehicle;
+    // Backend CartItemView: item.listing.title, item.listing.vehicle.brand, .model
+    const listing = item.listing;
+    if (listing?.title) return listing.title;
+    const vehicle = listing?.vehicle;
     if (vehicle?.brand && vehicle?.model) return `${vehicle.brand} ${vehicle.model}`;
     return vehicle?.title || vehicle?.name || 'Product';
   };

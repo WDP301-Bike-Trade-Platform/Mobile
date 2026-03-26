@@ -463,7 +463,7 @@ const SellerListingDetail = () => {
         {/* Info Section */}
         <View style={styles.infoSection}>
           <Text style={styles.title}>
-            {vehicleData.brand} {vehicleData.model}
+            {listing.title || `${vehicleData.brand} ${vehicleData.model}`}
           </Text>
           <Text style={styles.price}>
             {price ? `₫${price.toLocaleString("vi-VN")}` : "Contact for price"}

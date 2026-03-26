@@ -96,8 +96,8 @@ const MyPost = () => {
         const transformedData = data.map(item => ({
           id: item.listing_id,
           listingId: item.listing_id,
-          title: `${item.vehicle?.brand} ${item.vehicle?.model}` || 'Untitled',
-          name: `${item.vehicle?.brand} ${item.vehicle?.model}` || 'Untitled',
+          title: item.title || (item.vehicle ? `${item.vehicle.brand} ${item.vehicle.model}` : 'Untitled'),
+          name: item.title || (item.vehicle ? `${item.vehicle.brand} ${item.vehicle.model}` : 'Untitled'),
           price: item.vehicle?.price?.d?.[0] || 0,
           status: item.status,
           createdAt: item.created_at,

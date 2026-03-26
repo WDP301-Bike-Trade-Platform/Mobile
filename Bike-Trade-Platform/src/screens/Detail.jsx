@@ -206,8 +206,8 @@ const Detail = () => {
         productId: listingId,
         product: {
           id: listingId,
-          title: `${vehicleData.brand} ${vehicleData.model}`,
-          name: `${vehicleData.brand} ${vehicleData.model}`,
+          title: product.title || `${vehicleData.brand} ${vehicleData.model}`,
+          name: product.title || `${vehicleData.brand} ${vehicleData.model}`,
           brand: vehicleData.brand,
           model: vehicleData.model,
           price,
@@ -253,7 +253,7 @@ const Detail = () => {
         listing: {
           ...vehicleData,
           id: listingId,
-          title: `${vehicleData.brand} ${vehicleData.model}`,
+          title: product.title || `${vehicleData.brand} ${vehicleData.model}`,
           brand: vehicleData.brand,
           model: vehicleData.model,
           price: price,
@@ -356,7 +356,7 @@ const Detail = () => {
             onPress={() =>
               navigation.navigate("Report", {
                 listingId,
-                listingTitle: `${vehicleData.brand} ${vehicleData.model}`,
+                listingTitle: product.title || `${vehicleData.brand} ${vehicleData.model}`,
               })
             }
             style={{
@@ -523,7 +523,7 @@ const Detail = () => {
             </View>
 
             <Text style={{ fontSize: 22, fontWeight: "bold", color: "#111", lineHeight: 28, marginBottom: 6 }}>
-              {vehicleData.brand} {vehicleData.model}
+              {product.title || `${vehicleData.brand} ${vehicleData.model}`}
             </Text>
 
             <Text style={{ fontSize: 26, fontWeight: "800", color: "#359EFF", marginBottom: 8 }}>

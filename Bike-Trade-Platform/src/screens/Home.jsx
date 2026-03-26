@@ -261,7 +261,7 @@ const Home = () => {
             }}
             numberOfLines={1}
           >
-            {vehicleData.brand} {vehicleData.model}
+            {bike.title || `${vehicleData.brand} ${vehicleData.model}`}
           </Text>
 
           {/* Size and Type */}

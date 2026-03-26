@@ -22,10 +22,10 @@ const BuyerShipments = ({ navigation }) => {
   const [activeFilter, setActiveFilter] = useState('ALL');
 
   const filters = [
-    { key: 'ALL', label: 'Tất cả', icon: 'package' },
-    { key: 'PENDING', label: 'Chờ xử lý', icon: 'clock' },
-    { key: 'IN_TRANSIT', label: 'Đang vận chuyển', icon: 'truck-delivery' },
-    { key: 'DELIVERED', label: 'Đã giao', icon: 'check-circle' },
+    { key: 'ALL', label: 'All', icon: 'package' },
+    { key: 'PENDING', label: 'Pending', icon: 'clock' },
+    { key: 'IN_TRANSIT', label: 'In Transit', icon: 'truck-delivery' },
+    { key: 'DELIVERED', label: 'Delivered', icon: 'check-circle' },
   ];
 
   useEffect(() => {
@@ -44,7 +44,7 @@ const BuyerShipments = ({ navigation }) => {
       setError(null);
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError('Không thể tải dữ liệu vận chuyển');
+      setError('Cannot load shipment data');
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const BuyerShipments = ({ navigation }) => {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-            Mã đơn: {shipment.orderId?.slice(0, 8)}...
+            Order ID: {shipment.orderId?.slice(0, 8)}...
           </Text>
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
             {shipment.trackingNumber}
@@ -126,7 +126,7 @@ const BuyerShipments = ({ navigation }) => {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>Người vận chuyển</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>Carrier</Text>
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#1f2937' }}>
             {shipment.carrier}
           </Text>
@@ -154,7 +154,7 @@ const BuyerShipments = ({ navigation }) => {
         ))}
         {shipment.trackings?.length > 3 && (
           <Text style={{ fontSize: 10, color: '#6b7280' }}>
-            +{shipment.trackings.length - 3} cập nhật
+            +{shipment.trackings.length - 3} updates
           </Text>
         )}
       </View>
@@ -168,15 +168,15 @@ const BuyerShipments = ({ navigation }) => {
           borderRadius: 8,
         }}
       >
-        <Text style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>Dự kiến giao</Text>
+        <Text style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>Expected delivery</Text>
         <Text style={{ fontSize: 13, fontWeight: '600', color: '#389cfa' }}>
           {shipment.estimatedDelivery
-            ? new Date(shipment.estimatedDelivery).toLocaleDateString('vi-VN', {
+            ? new Date(shipment.estimatedDelivery).toLocaleDateString('en-US', {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric',
               })
-            : 'Chưa xác định'}
+            : 'TBD'}
         </Text>
       </View>
     </Pressable>
@@ -186,10 +186,10 @@ const BuyerShipments = ({ navigation }) => {
     if (!stats) return null;
 
     const statItems = [
-      { label: 'Chờ xử lý', value: stats.pending, color: '#FCD34D' },
-      { label: 'Đang giao', value: stats.inTransit, color: '#60A5FA' },
-      { label: 'Đã giao', value: stats.delivered, color: '#22C55E' },
-      { label: 'Hỏng', value: stats.failed, color: '#EF4444' },
+      { label: 'Pending', value: stats.pending, color: '#FCD34D' },
+      { label: 'In Transit', value: stats.inTransit, color: '#60A5FA' },
+      { label: 'Delivered', value: stats.delivered, color: '#22C55E' },
+      { label: 'Failed', value: stats.failed, color: '#EF4444' },
     ];
 
     return (
@@ -225,11 +225,11 @@ const BuyerShipments = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8' }}>
-        <HeaderBar title="Vận chuyển" onBack={() => navigation.goBack()} />
+        <HeaderBar title="Shipments" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#389cfa" />
           <Text style={{ marginTop: 16, fontSize: 14, color: '#6b7280' }}>
-            Đang tải...
+            Loading...
           </Text>
         </View>
       </SafeAreaView>
@@ -239,7 +239,7 @@ const BuyerShipments = ({ navigation }) => {
   if (error) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8' }}>
-        <HeaderBar title="Vận chuyển" onBack={() => navigation.goBack()} />
+        <HeaderBar title="Shipments" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <MaterialCommunityIcons name="alert-circle" size={48} color="#ef4444" />
           <Text style={{ marginTop: 16, fontSize: 16, color: '#ef4444', textAlign: 'center' }}>
@@ -255,7 +255,7 @@ const BuyerShipments = ({ navigation }) => {
               borderRadius: 8,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Thử lại</Text>
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -266,7 +266,7 @@ const BuyerShipments = ({ navigation }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7f8' }}>
-      <HeaderBar title="Vận chuyển" onBack={() => navigation.goBack()} />
+      <HeaderBar title="Shipments" onBack={() => navigation.goBack()} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -324,7 +324,7 @@ const BuyerShipments = ({ navigation }) => {
           <View style={{ alignItems: 'center', paddingVertical: 40 }}>
             <MaterialCommunityIcons name="package" size={48} color="#cbd5e1" />
             <Text style={{ fontSize: 16, color: '#6b7280', marginTop: 12 }}>
-              Không có vận chuyển nào
+              No shipments found
             </Text>
           </View>
         )}
