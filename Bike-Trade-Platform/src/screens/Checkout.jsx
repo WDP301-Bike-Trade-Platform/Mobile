@@ -30,6 +30,7 @@ const Checkout = ({ route, navigation }) => {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('PAYOS');
   const [isDepositPayment, setIsDepositPayment] = useState(false);
+  const isOfferCheckout = Boolean(offerId);
 
   const orderTotal = totalAmount || listing?.price || listing?.offeredPrice || 0;
   const depositAmount = Math.round(orderTotal * DEPOSIT_RATE * 100) / 100;
@@ -39,6 +40,13 @@ const Checkout = ({ route, navigation }) => {
   useEffect(() => {
     fetchAddresses();
   }, []);
+
+  useEffect(() => {
+    if (isOfferCheckout) {
+      setPaymentMethod('PAYOS');
+      setIsDepositPayment(false);
+    }
+  }, [isOfferCheckout]);
 
   const fetchAddresses = async () => {
     try {
@@ -66,6 +74,13 @@ const Checkout = ({ route, navigation }) => {
     }
   };
 
+  const resolvePaymentStage = (useDepositFlag) => {
+    if (isOfferCheckout) {
+      return 'FULL';
+    }
+    return useDepositFlag ? 'DEPOSIT' : 'FULL';
+  };
+
   const handleCheckout = async () => {
     if (!selectedAddress) {
       Alert.alert('Error', 'Please select a shipping address');
@@ -74,16 +89,19 @@ const Checkout = ({ route, navigation }) => {
 
     try {
       setLoading(true);
+      const sanitizedNote = note.trim();
 
       // Check if checkout from cart or single listing
       if (cartItems && cartItems.length > 0) {
         // Checkout from cart
         const useDeposit = paymentMethod === 'PAYOS' && isDepositPayment;
+        const paymentStage = resolvePaymentStage(useDeposit);
         const checkoutData = {
           paymentMethod,
           isDeposit: useDeposit,
           shippingAddressId: selectedAddress.address_id,
           deliveryPhone: selectedAddress.phone || undefined,
+          note: sanitizedNote || undefined,
         };
 
         const orders = await checkoutCart(checkoutData);
@@ -93,12 +111,13 @@ const Checkout = ({ route, navigation }) => {
             // Single order with PAYOS - proceed to payment
             const orderId = orders[0].order_id;
             const paymentData = await createPaymentForOrder(orderId, {
-              paymentStage: useDeposit ? 'DEPOSIT' : undefined,
+              paymentStage,
               platform: 'MOBILE',
             });
 
-            if (paymentData.paymentLink) {
-              await Linking.openURL(paymentData.paymentLink);
+            const paymentLink = paymentData.paymentLink || paymentData.checkoutUrl;
+            if (paymentLink) {
+              await Linking.openURL(paymentLink);
               Alert.alert(
                 'Order Placed',
                 'Please complete the payment in your browser',
@@ -120,13 +139,14 @@ const Checkout = ({ route, navigation }) => {
       } else if (listing) {
         // Checkout single listing - create order first
         const useDeposit = paymentMethod === 'PAYOS' && isDepositPayment;
+        const paymentStage = resolvePaymentStage(useDeposit);
         const orderData = {
           listingId: listing.listing_id || listing.id,
           paymentMethod,
           isDeposit: useDeposit,
           shippingAddressId: selectedAddress.address_id,
           deliveryPhone: selectedAddress.phone || undefined,
-          note: note || undefined,
+          note: sanitizedNote || undefined,
           offerId: offerId || undefined,
         };
 
@@ -134,12 +154,13 @@ const Checkout = ({ route, navigation }) => {
 
         if (paymentMethod === 'PAYOS' && order?.order_id) {
           const paymentData = await createPaymentForOrder(order.order_id, {
-            paymentStage: useDeposit ? 'DEPOSIT' : undefined,
+            paymentStage,
             platform: 'MOBILE',
           });
 
-          if (paymentData.paymentLink) {
-            await Linking.openURL(paymentData.paymentLink);
+          const paymentLink = paymentData.paymentLink || paymentData.checkoutUrl;
+          if (paymentLink) {
+            await Linking.openURL(paymentLink);
             Alert.alert(
               'Order Placed',
               'Please complete the payment in your browser',
@@ -271,56 +292,74 @@ const Checkout = ({ route, navigation }) => {
           </Text>
           {[
             { key: 'PAYOS', label: 'PayOS', desc: 'Online payment via bank transfer', icon: 'credit-card-outline' },
-            { key: 'COD', label: 'COD', desc: 'Cash on delivery', icon: 'cash' },
-          ].map((method) => (
-            <Pressable
-              key={method.key}
-              onPress={() => {
-                setPaymentMethod(method.key);
-                if (method.key === 'COD') {
-                  setIsDepositPayment(false);
-                }
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                padding: 14,
-                marginBottom: 8,
-                borderRadius: 10,
-                borderWidth: 1.5,
-                borderColor: paymentMethod === method.key ? '#389cfa' : '#e5e7eb',
-                backgroundColor: paymentMethod === method.key ? '#f0f9ff' : '#fff',
-                gap: 12,
-              }}
-            >
-              <MaterialCommunityIcons
-                name={method.icon}
-                size={24}
-                color={paymentMethod === method.key ? '#389cfa' : '#9ca3af'}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
-                  {method.label}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                  {method.desc}
-                </Text>
-              </View>
-              <View style={{
-                width: 22, height: 22, borderRadius: 11,
-                borderWidth: 2,
-                borderColor: paymentMethod === method.key ? '#389cfa' : '#d1d5db',
-                justifyContent: 'center', alignItems: 'center',
-              }}>
-                {paymentMethod === method.key && (
-                  <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#389cfa' }} />
-                )}
-              </View>
-            </Pressable>
-          ))}
+            { key: 'COD', label: 'COD', desc: 'Cash on delivery', icon: 'cash', disabled: isOfferCheckout },
+          ].map((method) => {
+            const isDisabled = method.disabled;
+            const isSelected = paymentMethod === method.key;
+
+            return (
+              <Pressable
+                key={method.key}
+                onPress={() => {
+                  if (isDisabled) {
+                    Alert.alert('Unavailable', 'COD is not available for accepted offers.');
+                    return;
+                  }
+                  setPaymentMethod(method.key);
+                  if (method.key === 'COD') {
+                    setIsDepositPayment(false);
+                  }
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 14,
+                  marginBottom: 8,
+                  borderRadius: 10,
+                  borderWidth: 1.5,
+                  borderColor: isSelected ? '#389cfa' : '#e5e7eb',
+                  backgroundColor: isDisabled ? '#f9fafb' : isSelected ? '#f0f9ff' : '#fff',
+                  gap: 12,
+                  opacity: isDisabled ? 0.4 : 1,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={method.icon}
+                  size={24}
+                  color={isDisabled ? '#d1d5db' : isSelected ? '#389cfa' : '#9ca3af'}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                    {method.label}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                    {method.desc}
+                  </Text>
+                </View>
+                <View style={{
+                  width: 22, height: 22, borderRadius: 11,
+                  borderWidth: 2,
+                  borderColor: isSelected ? '#389cfa' : '#d1d5db',
+                  justifyContent: 'center', alignItems: 'center',
+                }}>
+                  {isSelected && (
+                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#389cfa' }} />
+                  )}
+                </View>
+              </Pressable>
+            );
+          })}
 
         
         </View>
+
+        {isOfferCheckout && (
+          <View style={{ backgroundColor: '#fffbeb', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#92400e' }}>
+              * Accepted offers must be paid in full via PayOS.
+            </Text>
+          </View>
+        )}
 
         {paymentMethod === 'PAYOS' && !offerId && (
          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>

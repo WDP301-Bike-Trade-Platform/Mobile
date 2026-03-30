@@ -132,24 +132,42 @@ const OrderDetail = ({ route, navigation }) => {
     }
   };
 
+  const resolvePaymentStageForOrder = () => {
+    if (order.status === 'CONFIRMED') {
+      return 'REMAINING';
+    }
+    if (order.status === 'PENDING') {
+      if (meta.depositRequired && !meta.depositPaid) {
+        return 'DEPOSIT';
+      }
+      return 'FULL';
+    }
+    return 'FULL';
+  };
+
   const handlePayment = async () => {
     try {
       setProcessingPayment(true);
-      const paymentStage = order.status === 'PENDING' ? 'DEPOSIT' : 'REMAINING';
-      const response = await createPaymentForOrder(orderId, { paymentStage });
-      const paymentData = response?.data || response;
+      const paymentStage = resolvePaymentStageForOrder();
+      const paymentData = await createPaymentForOrder(orderId, {
+        paymentStage,
+        platform: 'MOBILE',
+      });
+      const checkoutUrl = paymentData?.paymentLink || paymentData?.checkoutUrl;
 
-      if (paymentData.paymentLink) {
-        const supported = await Linking.canOpenURL(paymentData.paymentLink);
+      if (checkoutUrl) {
+        const supported = await Linking.canOpenURL(checkoutUrl);
         if (supported) {
-          await Linking.openURL(paymentData.paymentLink);
+          await Linking.openURL(checkoutUrl);
         } else {
           Alert.alert('Error', 'Unable to open payment link');
         }
+      } else {
+        Alert.alert('Notice', 'Payment link is not ready yet. Please try again later.');
       }
     } catch (error) {
       console.error('Error creating payment:', error);
-      Alert.alert('Error', 'Unable to create payment link');
+      Alert.alert('Error', getErrorMessage(error, 'Unable to create payment link'));
     } finally {
       setProcessingPayment(false);
     }
@@ -326,9 +344,10 @@ const OrderDetail = ({ route, navigation }) => {
   })();
 
   // Buyer can pay deposit when PENDING
-  const buyerCanPayDeposit = isBuyer && order.status === 'PENDING' && meta.depositRequired && !meta.depositPaid && paymentMethod !== 'COD';
+  const isPayOsOrder = paymentMethod === 'PAYOS';
+  const buyerCanInitiatePayment = isBuyer && order.status === 'PENDING' && isPayOsOrder;
   // Buyer can pay remaining when CONFIRMED
-  const buyerCanPayRemaining = isBuyer && order.status === 'CONFIRMED';
+  const buyerCanPayRemaining = isBuyer && order.status === 'CONFIRMED' && isPayOsOrder;
   // Seller can confirm/reject when DEPOSITED
   const sellerCanConfirmReject = isSeller && (order.status === 'DEPOSITED' || (order.status === 'PENDING' && paymentMethod === 'COD'));
   // Buyer can complete when shipment is DELIVERED and order is in a completable status
@@ -579,8 +598,8 @@ const OrderDetail = ({ route, navigation }) => {
 
         {/* Actions */}
         <View style={{ gap: 12 }}>
-          {/* Buyer: Pay Deposit (PENDING) */}
-          {buyerCanPayDeposit && (
+          {/* Buyer: Pay Deposit or Full (PENDING) */}
+          {buyerCanInitiatePayment && (
             <View>
               <Pressable
                 onPress={handlePayment}
@@ -601,12 +620,16 @@ const OrderDetail = ({ route, navigation }) => {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="credit-card-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Deposit (10%)</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
+                        {meta.depositRequired ? 'Pay Deposit' : 'Pay Full Amount'}
+                      </Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Pay 10% deposit to lock the listing
+                  {meta.depositRequired
+                    ? `Pay đ${formatPrice(depositAmount)} to lock the listing`
+                    : `Pay đ${formatPrice(totalAmount)} securely via PayOS`}
               </Text>
             </View>
           )}

@@ -173,6 +173,10 @@ const Home = () => {
     const listingId = bike.listing_id || bike.id;
     const vehicleData = bike.vehicle || bike;
     const mediaData = bike.media || [];
+    const isCertified = Boolean(
+      bike.is_certified ?? bike.listing?.is_certified ?? vehicleData.is_certified
+    );
+    const certifiedAt = bike.certified_at || bike.listing?.certified_at || vehicleData.certified_at;
     const firstImage = mediaData.length > 0 
       ? mediaData[0].file_url 
       : (bike.image || "https://random-image-pepebigotes.vercel.app/api/random-image");
@@ -237,6 +241,26 @@ const Home = () => {
             overflow: "hidden",
           }}
         >
+          {isCertified && (
+            <View
+              style={{
+                position: "absolute",
+                top: 12,
+                left: 12,
+                zIndex: 5,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 20,
+                backgroundColor: "rgba(22, 163, 74, 0.9)",
+              }}
+            >
+              <MaterialCommunityIcons name="shield-check" size={12} color="#fff" />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>Certified</Text>
+            </View>
+          )}
           <Image
             source={{
               uri: firstImage,
@@ -311,6 +335,24 @@ const Home = () => {
               {sellerInfo.full_name || "Unknown"}
             </Text>
           </View>
+
+          {isCertified && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                marginBottom: 8,
+              }}
+            >
+              <MaterialCommunityIcons name="certificate" size={12} color="#16a34a" />
+              <Text style={{ fontSize: 10, color: "#16a34a", fontWeight: "600" }}>
+                {certifiedAt
+                  ? `Certified ${new Date(certifiedAt).toLocaleDateString("vi-VN")}`
+                  : "Marketplace Certified"}
+              </Text>
+            </View>
+          )}
 
           {/* Add to Cart Button */}
           <Pressable

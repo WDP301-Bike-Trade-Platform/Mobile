@@ -190,6 +190,13 @@ const Detail = () => {
   const isSold = status === "SOLD";
   const hasInspection = inspections.length > 0;
   const latestInspection = hasInspection ? inspections[inspections.length - 1] : null;
+  const isCertified = Boolean(
+    product.is_certified ?? product.listing?.is_certified ?? vehicleData.is_certified
+  );
+  const certifiedAt = product.certified_at || product.listing?.certified_at || vehicleData.certified_at || null;
+  const certifiedDateLabel = certifiedAt
+    ? new Date(certifiedAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "short" })
+    : null;
 
   const images =
     mediaData.length > 0
@@ -441,12 +448,33 @@ const Detail = () => {
             ))}
           </View>
 
+          {/* Certification Badge on Image */}
+          {isCertified && (
+            <View
+              style={{
+                position: "absolute",
+                top: 110,
+                left: 16,
+                backgroundColor: "rgba(22,163,74,0.95)",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+              }}
+            >
+              <MaterialCommunityIcons name="shield-check" size={14} color="#fff" />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "#fff" }}>Certified Listing</Text>
+            </View>
+          )}
+
           {/* Status Badge on Image */}
           {isSold && (
             <View
               style={{
                 position: "absolute",
-                top: 100,
+                top: isCertified ? 150 : 110,
                 left: 16,
                 backgroundColor: statusInfo.bg,
                 flexDirection: "row",
@@ -518,6 +546,24 @@ const Detail = () => {
                 >
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusInfo.color }} />
                   <Text style={{ fontSize: 11, fontWeight: "600", color: statusInfo.color }}>{statusInfo.label}</Text>
+                </View>
+              )}
+              {isCertified && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    backgroundColor: "#dcfce7",
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 20,
+                  }}
+                >
+                  <MaterialCommunityIcons name="shield-check" size={12} color="#16a34a" />
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: "#15803d" }}>
+                    {certifiedDateLabel ? `Certified ${certifiedDateLabel}` : "Certified"}
+                  </Text>
                 </View>
               )}
             </View>
@@ -670,43 +716,6 @@ const Detail = () => {
                   </Text>
                 </Pressable>
               )}
-            </View>
-          </View>
-
-          {/* Verification */}
-          <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-            <View
-              style={{
-                backgroundColor: "#eff6ff",
-                borderWidth: 1,
-                borderColor: "#bfdbfe",
-                borderRadius: 14,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                flexDirection: "row",
-                gap: 12,
-              }}
-            >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: "#dbeafe",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <MaterialCommunityIcons name="shield-check" size={22} color="#2563eb" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#1e40af", marginBottom: 3 }}>
-                  Marketplace Verified
-                </Text>
-                <Text style={{ fontSize: 12, color: "#3b82f6", lineHeight: 18 }}>
-                  Seller identity verified. Frame serial #{vehicleData.frame_serial || "N/A"} checked against theft databases.
-                </Text>
-              </View>
             </View>
           </View>
 
