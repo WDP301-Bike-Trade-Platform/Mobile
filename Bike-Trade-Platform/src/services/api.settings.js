@@ -1,43 +1,49 @@
 import { instance } from "../lib/axios";
 
-let cachedSettings = null;
-let lastFetchTime = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
 /**
- * Fetch public platform settings (no auth required).
- * Results are cached in memory for 5 minutes.
+ * Platform Settings API Services
+ * Fetch admin-configurable platform settings (deposit rate, fees, shipping config, etc.)
  */
-export const getPlatformSettings = async (forceRefresh = false) => {
-  const now = Date.now();
-  if (!forceRefresh && cachedSettings && now - lastFetchTime < CACHE_TTL) {
-    return cachedSettings;
+
+const unwrapApiResponse = (response) => {
+  const payload = response?.data;
+
+  if (payload?.success === false) {
+    const message = payload?.message || payload?.error || 'Request failed';
+    throw new Error(message);
   }
 
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) {
+    return payload.data;
+  }
+
+  return payload;
+};
+
+/**
+ * Get public platform settings (no auth required)
+ * Returns: deposit_rate, platform_fee_rate, escrow_hold_hours, 
+ *          remaining_payment_window_min, shipping_fee
+ */
+export const getPublicSettings = async () => {
   try {
     const response = await instance.get("/settings/public");
-    const payload = response?.data;
-    const data = payload?.data || payload;
-    cachedSettings = data;
-    lastFetchTime = Date.now();
-    return data;
+    return unwrapApiResponse(response);
   } catch (error) {
-    console.error("Error fetching platform settings:", error?.message);
-    // Return cached or defaults if API fails
-    return cachedSettings || {
-      deposit_rate: 0.1,
-      escrow_hold_hours: 72,
-      platform_fee_rate: 0.07,
-      remaining_payment_window_min: 3,
-      shipping_fee: 35000,
-    };
+    console.error("Error fetching public settings:", error);
+    throw error;
   }
 };
 
 /**
- * Clear the in-memory cache (call on logout or when Admin updates settings).
+ * Get all platform settings (admin only)
  */
-export const clearSettingsCache = () => {
-  cachedSettings = null;
-  lastFetchTime = 0;
+export const getSettings = async () => {
+  try {
+    const response = await instance.get("/settings");
+    return unwrapApiResponse(response);
+  } catch (error) {
+    console.error("Error fetching settings:", error);
+    throw error;
+  }
 };

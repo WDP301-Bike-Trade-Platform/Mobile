@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { instance } from "../lib/axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getPlatformSettings } from "../services/api.settings";
+import { PlatformSettingsProvider } from "./PlatformSettingsProvider";
 
 const AppContext = createContext();
 
@@ -79,8 +79,6 @@ const AppProvider = ({ children }) => {
         setUser,
         authLoading,
         logout,
-        platformSettings,
-        refreshPlatformSettings: fetchPlatformSettings,
       }}
     >
       {children}

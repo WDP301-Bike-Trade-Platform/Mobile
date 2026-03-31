@@ -22,6 +22,7 @@ import { decimalToNumber } from "../utils/formatters";
 import { checkProfileComplete } from "../utils/profileCheck";
 import { useAppContext } from "../provider/AppProvider";
 import Dropdown from "../component/DropDown";
+import { usePlatformSettings } from "../provider/PlatformSettingsProvider";
 
 // Separate InputField component to prevent re-renders
 const InputField = memo(({ label, field, placeholder, keyboardType = "default", required = false, multiline = false, value, onChangeText }) => (
@@ -59,6 +60,7 @@ const InputField = memo(({ label, field, placeholder, keyboardType = "default", 
 const CreateProduct = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { settings } = usePlatformSettings();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -398,9 +400,9 @@ const CreateProduct = () => {
               </Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ fontSize: 13, color: '#ef4444' }}>Platform Fee ({Math.round(platformFeeRate * 100)}%)</Text>
+              <Text style={{ fontSize: 13, color: '#ef4444' }}>Platform Fee ({Math.round(settings.platform_fee_rate * 100)}%)</Text>
               <Text style={{ fontSize: 13, color: '#ef4444', fontWeight: '600' }}>
-                - ₫{(parseFloat(formData.price) * platformFeeRate).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
+                - ₫{(parseFloat(formData.price) * settings.platform_fee_rate).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
               </Text>
             </View>
             <View style={{ height: 1, backgroundColor: '#e2e8f0', marginBottom: 10 }} />
