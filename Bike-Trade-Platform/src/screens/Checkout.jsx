@@ -17,11 +17,11 @@ import { createPaymentForOrder } from '../services/api.payment';
 import { getMyAddresses, getDefaultAddress } from '../services/api.address';
 import HeaderBar from '../component/HeaderBar';
 import { formatPrice } from '../utils/formatters';
-
-const DEPOSIT_RATE = 0.1;
+import { usePlatformSettings } from '../provider/PlatformSettingsProvider';
 
 const Checkout = ({ route, navigation }) => {
   const { listing, cartItems, totalAmount, offerId } = route.params;
+  const { settings } = usePlatformSettings();
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -33,7 +33,7 @@ const Checkout = ({ route, navigation }) => {
   const isOfferCheckout = Boolean(offerId);
 
   const orderTotal = totalAmount || listing?.price || listing?.offeredPrice || 0;
-  const depositAmount = Math.round(orderTotal * DEPOSIT_RATE * 100) / 100;
+  const depositAmount = Math.round(orderTotal * settings.deposit_rate * 100) / 100;
   const payableNow =
     paymentMethod === 'PAYOS' && isDepositPayment ? depositAmount : orderTotal;
 
@@ -75,10 +75,12 @@ const Checkout = ({ route, navigation }) => {
   };
 
   const resolvePaymentStage = (useDepositFlag) => {
+    // Only return DEPOSIT if applicable; omit paymentStage for full payment
+    // Backend defaults to FULL when paymentStage is not provided
     if (isOfferCheckout) {
-      return 'FULL';
+      return undefined; // Full payment for offers (no stage needed)
     }
-    return useDepositFlag ? 'DEPOSIT' : 'FULL';
+    return useDepositFlag ? 'DEPOSIT' : undefined; // Undefined = full payment
   };
 
   const handleCheckout = async () => {
@@ -382,7 +384,7 @@ const Checkout = ({ route, navigation }) => {
               >
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
-                    Pay 10% deposit now
+                    Pay {Math.round(settings.deposit_rate * 100)}% deposit now
                   </Text>
                   <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
                     Pay now: đ{formatPrice(depositAmount)}
@@ -461,7 +463,7 @@ const Checkout = ({ route, navigation }) => {
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text style={{ fontSize: 14, color: '#6b7280' }}>
-                  Deposit (10%)
+                  Deposit ({Math.round(settings.deposit_rate * 100)}%)
                 </Text>
                 <Text style={{ fontSize: 14, color: '#111827', fontWeight: '600' }}>
                   đ{formatPrice(depositAmount)}

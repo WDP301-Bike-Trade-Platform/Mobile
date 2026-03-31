@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { instance } from "../lib/axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PlatformSettingsProvider } from "./PlatformSettingsProvider";
 
 const AppContext = createContext();
 
@@ -85,23 +86,25 @@ const AppProvider = ({ children }) => {
   }, []);
 
   return (
-    <AppContext.Provider
-      value={{
-        books,
-        setBooks,
-        addBook,
-        removeBook,
-        updateBook,
-        isAuthenticated,
-        setIsAuthenticated,
-        user,
-        setUser,
-        authLoading,
-        logout,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
+    <PlatformSettingsProvider>
+      <AppContext.Provider
+        value={{
+          books,
+          setBooks,
+          addBook,
+          removeBook,
+          updateBook,
+          isAuthenticated,
+          setIsAuthenticated,
+          user,
+          setUser,
+          authLoading,
+          logout,
+        }}
+      >
+        {children}
+      </AppContext.Provider>
+    </PlatformSettingsProvider>
   );
 };
 

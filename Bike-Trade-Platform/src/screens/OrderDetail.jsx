@@ -140,9 +140,9 @@ const OrderDetail = ({ route, navigation }) => {
       if (meta.depositRequired && !meta.depositPaid) {
         return 'DEPOSIT';
       }
-      return 'FULL';
+      return undefined; // Full payment (backend defaults to FULL)
     }
-    return 'FULL';
+    return undefined; // Default to full payment
   };
 
   const handlePayment = async () => {
