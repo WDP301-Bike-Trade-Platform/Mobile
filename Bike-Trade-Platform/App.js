@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Provider } from 'react-redux';
 import RootNavigation from './src/navigation/RootNavigation';
 import AppProvider from './src/provider/AppProvider';
+import { PlatformSettingsProvider } from './src/provider/PlatformSettingsProvider';
 import StorageProvider from './src/provider/StorageProvider';
 import { store } from './src/store';
 
@@ -9,9 +10,11 @@ export default function App() {
   return (
     <Provider store={store}>
       <AppProvider>
-        <StorageProvider>
-          <RootNavigation />
-        </StorageProvider>
+        <PlatformSettingsProvider>
+          <StorageProvider>
+            <RootNavigation />
+          </StorageProvider>
+        </PlatformSettingsProvider>
       </AppProvider>
     </Provider>
   );
