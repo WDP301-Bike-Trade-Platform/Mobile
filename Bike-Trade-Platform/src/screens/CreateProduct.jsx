@@ -20,6 +20,7 @@ import { createProduct } from "../services/api.products";
 import { updateListing } from "../services/api.sellerListings";
 import { decimalToNumber } from "../utils/formatters";
 import { checkProfileComplete } from "../utils/profileCheck";
+import { useAppContext } from "../provider/AppProvider";
 import Dropdown from "../component/DropDown";
 
 // Separate InputField component to prevent re-renders
@@ -61,6 +62,8 @@ const CreateProduct = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [categories, setCategories] = useState([]);
+  const { platformSettings } = useAppContext();
+  const platformFeeRate = platformSettings?.platform_fee_rate ?? 0.07;
 
   // Get edit mode data from route params
   const isEdit = route.params?.isEdit;
@@ -395,16 +398,16 @@ const CreateProduct = () => {
               </Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ fontSize: 13, color: '#ef4444' }}>Platform Fee (7%)</Text>
+              <Text style={{ fontSize: 13, color: '#ef4444' }}>Platform Fee ({Math.round(platformFeeRate * 100)}%)</Text>
               <Text style={{ fontSize: 13, color: '#ef4444', fontWeight: '600' }}>
-                - ₫{(parseFloat(formData.price) * 0.07).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
+                - ₫{(parseFloat(formData.price) * platformFeeRate).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
               </Text>
             </View>
             <View style={{ height: 1, backgroundColor: '#e2e8f0', marginBottom: 10 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: '#0f172a', fontWeight: '700' }}>You will receive</Text>
               <Text style={{ fontSize: 16, color: '#16a34a', fontWeight: '800' }}>
-                ₫{(parseFloat(formData.price) * 0.93).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
+                ₫{(parseFloat(formData.price) * (1 - platformFeeRate)).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
               </Text>
             </View>
           </View>

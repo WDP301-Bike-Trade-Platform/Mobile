@@ -17,8 +17,7 @@ import { createPaymentForOrder } from '../services/api.payment';
 import { getMyAddresses, getDefaultAddress } from '../services/api.address';
 import HeaderBar from '../component/HeaderBar';
 import { formatPrice } from '../utils/formatters';
-
-const DEPOSIT_RATE = 0.1;
+import { useAppContext } from '../provider/AppProvider';
 
 const Checkout = ({ route, navigation }) => {
   const { listing, cartItems, totalAmount, offerId } = route.params;
@@ -30,12 +29,17 @@ const Checkout = ({ route, navigation }) => {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('PAYOS');
   const [isDepositPayment, setIsDepositPayment] = useState(false);
+  const { platformSettings } = useAppContext();
   const isOfferCheckout = Boolean(offerId);
 
+  const depositRate = platformSettings?.deposit_rate ?? 0.1;
+  const shippingFee = platformSettings?.shipping_fee ?? 0;
   const orderTotal = totalAmount || listing?.price || listing?.offeredPrice || 0;
-  const depositAmount = Math.round(orderTotal * DEPOSIT_RATE * 100) / 100;
-  const payableNow =
-    paymentMethod === 'PAYOS' && isDepositPayment ? depositAmount : orderTotal;
+  const depositAmount = Math.round(orderTotal * depositRate * 100) / 100;
+  const payableNow = (() => {
+    if (paymentMethod === 'PAYOS' && isDepositPayment) return depositAmount;
+    return orderTotal + shippingFee;
+  })();
 
   useEffect(() => {
     fetchAddresses();
@@ -194,7 +198,7 @@ const Checkout = ({ route, navigation }) => {
       <HeaderBar title="Checkout" onBack={() => navigation.goBack()} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 50 }}
       >
         {/* Product Summary */}
         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
@@ -362,64 +366,64 @@ const Checkout = ({ route, navigation }) => {
         )}
 
         {paymentMethod === 'PAYOS' && !offerId && (
-         <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
-              Payment Options
-            </Text>
-            <View style={{ marginTop: 8, gap: 8 }}>
-              <Pressable
-                onPress={() => setIsDepositPayment(true)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderWidth: 1,
-                  borderColor: isDepositPayment ? '#389cfa' : '#e5e7eb',
-                  backgroundColor: isDepositPayment ? '#f0f9ff' : '#fff',
-                  borderRadius: 10,
-                  padding: 12,
-                }}
-              >
-                <View>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
-                    Pay 10% deposit now
-                  </Text>
-                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                    Pay now: đ{formatPrice(depositAmount)}
-                  </Text>
-                </View>
-                {isDepositPayment && (
-                  <MaterialCommunityIcons name="check-circle" size={22} color="#389cfa" />
-                )}
-              </Pressable>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
+            Payment Options
+          </Text>
+          <View style={{ marginTop: 8, gap: 8 }}>
+            <Pressable
+              onPress={() => setIsDepositPayment(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderWidth: 1,
+                borderColor: isDepositPayment ? '#389cfa' : '#e5e7eb',
+                backgroundColor: isDepositPayment ? '#f0f9ff' : '#fff',
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
+                  Pay {Math.round(depositRate * 100)}% deposit now
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  Pay now: đ{formatPrice(depositAmount)}
+                </Text>
+              </View>
+              {isDepositPayment && (
+                <MaterialCommunityIcons name="check-circle" size={22} color="#389cfa" />
+              )}
+            </Pressable>
 
-              <Pressable
-                onPress={() => setIsDepositPayment(false)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderWidth: 1,
-                  borderColor: !isDepositPayment ? '#389cfa' : '#e5e7eb',
-                  backgroundColor: !isDepositPayment ? '#f0f9ff' : '#fff',
-                  borderRadius: 10,
-                  padding: 12,
-                }}
-              >
-                <View>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
-                    Pay full amount now
-                  </Text>
-                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                    Pay now: đ{formatPrice(orderTotal)}
-                  </Text>
-                </View>
-                {!isDepositPayment && (
-                  <MaterialCommunityIcons name="check-circle" size={22} color="#389cfa" />
-                )}
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => setIsDepositPayment(false)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderWidth: 1,
+                borderColor: !isDepositPayment ? '#389cfa' : '#e5e7eb',
+                backgroundColor: !isDepositPayment ? '#f0f9ff' : '#fff',
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>
+                  Pay full amount now
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                  Pay now: đ{formatPrice(orderTotal + shippingFee)}
+                </Text>
+              </View>
+              {!isDepositPayment && (
+                <MaterialCommunityIcons name="check-circle" size={22} color="#389cfa" />
+              )}
+            </Pressable>
           </View>
+        </View>
           )}
 
         {/* Note */}
@@ -461,14 +465,26 @@ const Checkout = ({ route, navigation }) => {
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text style={{ fontSize: 14, color: '#6b7280' }}>
-                  Deposit (10%)
+                  Deposit ({Math.round(depositRate * 100)}%)
                 </Text>
                 <Text style={{ fontSize: 14, color: '#111827', fontWeight: '600' }}>
                   đ{formatPrice(depositAmount)}
                 </Text>
               </View>
             </>
-          ) : null}
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>Subtotal</Text>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>đ{formatPrice(orderTotal)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>Shipping Fee</Text>
+                <Text style={{ fontSize: 14, color: '#111827', fontWeight: '600' }}>đ{formatPrice(shippingFee)}</Text>
+              </View>
+            </>
+          )}
+          <View style={{ height: 1, backgroundColor: '#e5e7eb', marginBottom: 8 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
               Pay now
@@ -477,6 +493,11 @@ const Checkout = ({ route, navigation }) => {
               đ{formatPrice(payableNow)}
             </Text>
           </View>
+          {paymentMethod === 'PAYOS' && isDepositPayment && shippingFee > 0 && (
+            <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 6, fontStyle: 'italic' }}>
+              * Shipping fee (đ{formatPrice(shippingFee)}) will be included in the remaining payment
+            </Text>
+          )}
         </View>
 
         {/* Note for cart checkout */}

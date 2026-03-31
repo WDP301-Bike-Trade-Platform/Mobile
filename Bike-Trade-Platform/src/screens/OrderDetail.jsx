@@ -51,6 +51,7 @@ const OrderDetail = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
+  const { platformSettings } = useAppContext();
 
   const getErrorMessage = (error, fallbackMessage) => {
     const apiMessage = error?.response?.data?.message;
@@ -326,19 +327,20 @@ const OrderDetail = ({ route, navigation }) => {
     order.orderDetails?.reduce((sum, item) => sum + decimalToNumber(item.total_price), 0) ||
     0;
   const depositAmount = Number(meta.depositAmount) || decimalToNumber(order.deposit_amount) || 0;
-  const remainingAmount = Math.max(totalAmount - depositAmount, 0);
+  const shippingFee = decimalToNumber(order.shipping_fee) || 0;
+  const remainingAmount = Math.max(totalAmount - depositAmount, 0) + shippingFee;
   const isDepositFlow = !!meta.depositRequired;
   const isFinalPaid = order.status === 'PAID' || order.status === 'COMPLETED';
   const shipmentStatus = shipment?.status;
   const canBuyerCompleteByShipment = shipmentStatus === 'DELIVERED';
 
   const summaryMainLabel = isDepositFlow
-    ? (isFinalPaid ? 'Total Paid' : 'Amount Due')
-    : 'Total';
+    ? (isFinalPaid ? 'Order Total' : 'Amount Due')
+    : 'Order Total';
 
   const summaryMainAmount = (() => {
-    if (!isDepositFlow) return totalAmount;
-    if (isFinalPaid) return totalAmount;
+    if (!isDepositFlow) return totalAmount + shippingFee;
+    if (isFinalPaid) return totalAmount + shippingFee;
     if (order.status === 'DEPOSITED' || order.status === 'CONFIRMED') return remainingAmount;
     return depositAmount;
   })();
@@ -450,13 +452,20 @@ const OrderDetail = ({ route, navigation }) => {
 
               {/* Summary */}
               <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                <SummaryRow label={`Total (${order.orderDetails.reduce((s, i) => s + i.quantity, 0)} items)`}
+                <SummaryRow label={`Subtotal (${order.orderDetails.reduce((s, i) => s + i.quantity, 0)} items)`}
                   value={`đ${formatPrice(totalAmount)}`} />
-                {meta.depositRequired && (
-                  <SummaryRow label="Deposit" value={`đ${formatPrice(depositAmount)}`} />
+                {shippingFee > 0 && (
+                  <SummaryRow label="Shipping Fee" value={`đ${formatPrice(shippingFee)}`} />
                 )}
                 {meta.depositRequired && (
-                  <SummaryRow label="Remaining" value={`đ${formatPrice(remainingAmount)}`} />
+                  <SummaryRow
+                    label={meta.depositPaid ? 'Deposit (Paid)' : 'Deposit'}
+                    value={meta.depositPaid ? `-đ${formatPrice(depositAmount)}` : `đ${formatPrice(depositAmount)}`}
+                    valueColor={meta.depositPaid ? '#ef4444' : undefined}
+                  />
+                )}
+                {meta.depositRequired && (
+                  <SummaryRow label="Remaining (incl. shipping)" value={`đ${formatPrice(remainingAmount)}`} />
                 )}
                 <View style={{ height: 1, backgroundColor: '#f3f4f6', marginVertical: 8 }} />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -656,12 +665,12 @@ const OrderDetail = ({ route, navigation }) => {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="credit-card-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Remaining (90%)</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Remaining ({Math.round((1 - (platformSettings?.deposit_rate ?? 0.1)) * 100)}%)</Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Complete payment within 3 minutes
+                Complete payment within {platformSettings?.remaining_payment_window_min ?? 3} minutes
               </Text>
             </View>
           )}
@@ -819,10 +828,10 @@ const InfoRow = ({ label, value, valueColor }) => (
   </View>
 );
 
-const SummaryRow = ({ label, value }) => (
+const SummaryRow = ({ label, value, valueColor }) => (
   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
     <Text style={{ fontSize: 13, color: '#6b7280' }}>{label}</Text>
-    <Text style={{ fontSize: 13, fontWeight: '600', color: '#111' }}>{value}</Text>
+    <Text style={{ fontSize: 13, fontWeight: '600', color: valueColor || '#111' }}>{value}</Text>
   </View>
 );
 

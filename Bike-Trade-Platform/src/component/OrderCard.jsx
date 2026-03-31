@@ -2,9 +2,15 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import StatusBadge from './StatusBadge';
-import { formatPrice, formatDate } from '../utils/formatters';
+import { formatPrice, formatDate, decimalToNumber } from '../utils/formatters';
 
 const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }) => {
+  // Compute display total: subtotal (from orderDetails) + shipping_fee
+  const subtotal = order.orderDetails
+    ? order.orderDetails.reduce((sum, item) => sum + decimalToNumber(item.total_price), 0)
+    : decimalToNumber(order.listing?.vehicle?.price) || decimalToNumber(order.deposit_amount) || 0;
+  const shippingFee = decimalToNumber(order.shipping_fee) || 0;
+  const displayTotal = subtotal + shippingFee;
   const getStatusColor = (status) => {
     const colors = {
       PENDING: '#f59e0b',
@@ -194,7 +200,7 @@ const OrderCard = ({ order, onPress, onAction, actionType, onConfirm, onReject }
           </Text>
         )}
         <Text style={{ fontSize: 16, fontWeight: '700', color: '#389cfa' }}>
-          đ{formatPrice(order.deposit_amount)}
+          đ{formatPrice(displayTotal)}
         </Text>
       </View>
 

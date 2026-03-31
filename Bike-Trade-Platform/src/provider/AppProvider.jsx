@@ -1,19 +1,21 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { instance } from "../lib/axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getPlatformSettings } from "../services/api.settings";
 
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
-  const [books, setBooks] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [tokenRefreshListener, setTokenRefreshListener] = useState(null);
+  const [platformSettings, setPlatformSettings] = useState(null);
 
   // Check if user is already logged in on app start
   useEffect(() => {
     checkAuthStatus();
+    fetchPlatformSettings();
     
     // Set up response interceptor to detect when refresh token fails
     const interceptor = instance.interceptors.response.use(
@@ -50,27 +52,6 @@ const AppProvider = ({ children }) => {
     }
   };
 
-  const fetchBooks = async () => {
-    const res = await instance.get("/");
-    setBooks(res.data);
-  };
-
-  const addBook = async (newBook) => {
-    const res = await instance.post("/", newBook);
-    setBooks((prevBooks) => [...prevBooks, res.data]);
-  };
-
-  const removeBook = async (id) => {
-    await instance.delete(`/${id}`);
-    setBooks((prevBooks) => prevBooks.filter((book) => book.id !== id));
-  };
-
-  const updateBook = async (id, updatedBook) => {
-    const res = await instance.put(`/${id}`, updatedBook);
-    setBooks((prevBooks) =>
-      prevBooks.map((book) => (book.id === id ? res.data : book))
-    );
-  };
 
   const logout = async () => {
     setIsAuthenticated(false);
@@ -80,24 +61,26 @@ const AppProvider = ({ children }) => {
     await AsyncStorage.removeItem("userData");
   };
 
-  useEffect(() => {
-    fetchBooks();
-  }, []);
+  const fetchPlatformSettings = async () => {
+    try {
+      const settings = await getPlatformSettings(true);
+      setPlatformSettings(settings);
+    } catch (error) {
+      console.log("Error fetching platform settings:", error);
+    }
+  };
 
   return (
     <AppContext.Provider
       value={{
-        books,
-        setBooks,
-        addBook,
-        removeBook,
-        updateBook,
         isAuthenticated,
         setIsAuthenticated,
         user,
         setUser,
         authLoading,
         logout,
+        platformSettings,
+        refreshPlatformSettings: fetchPlatformSettings,
       }}
     >
       {children}
