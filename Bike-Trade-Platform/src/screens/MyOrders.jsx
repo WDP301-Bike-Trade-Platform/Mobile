@@ -22,7 +22,6 @@ import HeaderBar from '../component/HeaderBar';
 import FilterButtons from '../component/FilterButtons';
 import OrderCard from '../component/OrderCard';
 import EmptyState from '../component/EmptyState';
-import VelodropeLoadingScreen from '../component/VelodropeLoadingScreen';
 
 const TABS = [
   { key: 'buy', label: 'Buy' },
@@ -252,7 +251,6 @@ const MyOrders = ({ navigation }) => {
           )}
         </ScrollView>
       )}
-    <VelodropeLoadingScreen visible={loading} />
     </SafeAreaView>
   );
 };

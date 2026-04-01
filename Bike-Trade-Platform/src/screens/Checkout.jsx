@@ -18,7 +18,6 @@ import { getMyAddresses, getDefaultAddress } from '../services/api.address';
 import HeaderBar from '../component/HeaderBar';
 import { formatPrice } from '../utils/formatters';
 import { usePlatformSettings } from '../provider/PlatformSettingsProvider';
-import VelodropeLoadingScreen from '../component/VelodropeLoadingScreen';
 
 const Checkout = ({ route, navigation }) => {
   const { listing, cartItems, totalAmount, offerId } = route.params;
@@ -650,7 +649,6 @@ const Checkout = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
-    <VelodropeLoadingScreen visible={loading} />
     </SafeAreaView>
   );
 };

@@ -19,7 +19,6 @@ import { getProducts, getCategories } from "../services/api.products";
 import { addToCart as addToCartApi } from "../services/api.cart";
 import { fetchNotifications } from "../services/api.notifications";
 import { checkProfileComplete } from "../utils/profileCheck";
-import VelodropeLoadingScreen from "../component/VelodropeLoadingScreen";
 
 const Home = () => {
   const navigation = useNavigation();
@@ -614,7 +613,6 @@ const Home = () => {
         />
       </View>
     </View>
-    <VelodropeLoadingScreen visible={loading} />
     </SafeAreaView>
   );
 };

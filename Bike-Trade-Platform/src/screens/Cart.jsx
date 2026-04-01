@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { formatPrice } from '../utils/formatters';
 import { useCart } from '../hooks/useCart';
-import VelodropeLoadingScreen from '../component/VelodropeLoadingScreen';
 
 const Cart = ({ navigation }) => {
   const {
@@ -219,7 +218,6 @@ const Cart = ({ navigation }) => {
           </View>
         </>
       )}
-    <VelodropeLoadingScreen visible={loading} />
     </SafeAreaView>
   );
 };
