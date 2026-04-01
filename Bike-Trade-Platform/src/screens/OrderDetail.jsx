@@ -14,6 +14,7 @@ import { getOrderById, cancelOrder, completeOrder, sellerConfirmOrder, sellerRej
 import { createPaymentForOrder } from '../services/api.payment';
 import { getShipmentByOrder, getStatusLabel, getStatusColor } from '../services/api.shipment';
 import { useAppContext } from '../provider/AppProvider';
+import { usePlatformSettings } from '../provider/PlatformSettingsProvider';
 import HeaderBar from '../component/HeaderBar';
 import StatusBadge from '../component/StatusBadge';
 import { formatPrice, formatDateTime, decimalToNumber } from '../utils/formatters';
@@ -44,6 +45,7 @@ const STATUS_COLORS = {
 const OrderDetail = ({ route, navigation }) => {
   const { orderId } = route.params;
   const { user } = useAppContext();
+  const { settings } = usePlatformSettings();
   const currentUserId = user?.user_id || user?.userId || user?.id;
   const [order, setOrder] = useState(null);
   const [shipment, setShipment] = useState(null);
@@ -51,7 +53,6 @@ const OrderDetail = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
-  const { platformSettings } = useAppContext();
 
   const getErrorMessage = (error, fallbackMessage) => {
     const apiMessage = error?.response?.data?.message;
@@ -665,12 +666,12 @@ const OrderDetail = ({ route, navigation }) => {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="credit-card-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Remaining ({Math.round((1 - (platformSettings?.deposit_rate ?? 0.1)) * 100)}%)</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Pay Remaining ({Math.round((1 - (settings?.deposit_rate ?? 0.1)) * 100)}%)</Text>
                   </>
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Complete payment within {platformSettings?.remaining_payment_window_min ?? 3} minutes
+                Complete payment within {settings?.remaining_payment_window_min ?? 3} minutes
               </Text>
             </View>
           )}

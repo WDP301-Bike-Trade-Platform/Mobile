@@ -572,11 +572,6 @@ const Home = () => {
           <Text style={{ fontSize: 18, fontWeight: "bold", color: "#222" }}>
             Hot Picks for You
           </Text>
-          <Pressable>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#359EFF" }}>
-              View all
-            </Text>
-          </Pressable>
         </View>
 
         {/* Product Grid */}

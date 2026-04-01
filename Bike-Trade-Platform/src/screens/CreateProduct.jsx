@@ -20,7 +20,6 @@ import { createProduct } from "../services/api.products";
 import { updateListing } from "../services/api.sellerListings";
 import { decimalToNumber } from "../utils/formatters";
 import { checkProfileComplete } from "../utils/profileCheck";
-import { useAppContext } from "../provider/AppProvider";
 import Dropdown from "../component/DropDown";
 import { usePlatformSettings } from "../provider/PlatformSettingsProvider";
 
@@ -64,8 +63,7 @@ const CreateProduct = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [categories, setCategories] = useState([]);
-  const { platformSettings } = useAppContext();
-  const platformFeeRate = platformSettings?.platform_fee_rate ?? 0.07;
+  const platformFeeRate = settings?.platform_fee_rate ?? 0.1;
 
   // Get edit mode data from route params
   const isEdit = route.params?.isEdit;
@@ -78,7 +76,7 @@ const CreateProduct = () => {
     title: "",
     brand: "",
     model: "",
-    year: "",
+    year: new Date().getFullYear().toString(),
     price: "",
     bike_type: "",
     material: "",
@@ -163,7 +161,7 @@ const CreateProduct = () => {
     }
   };
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await getCategories();
       // Handle different response structures
@@ -182,7 +180,7 @@ const CreateProduct = () => {
       setCategories([]);
       // Alert.alert("Error", "Failed to load categories");
     }
-  };
+  }, []);
 
   const requestMediaPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -400,9 +398,9 @@ const CreateProduct = () => {
               </Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ fontSize: 13, color: '#ef4444' }}>Platform Fee ({Math.round(settings.platform_fee_rate * 100)}%)</Text>
+              <Text style={{ fontSize: 13, color: '#ef4444' }}>Platform Fee ({Math.round(platformFeeRate * 100)}%)</Text>
               <Text style={{ fontSize: 13, color: '#ef4444', fontWeight: '600' }}>
-                - ₫{(parseFloat(formData.price) * settings.platform_fee_rate).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
+                - ₫{(parseFloat(formData.price) * platformFeeRate).toLocaleString("vi-VN", { maximumFractionDigits: 0 })}
               </Text>
             </View>
             <View style={{ height: 1, backgroundColor: '#e2e8f0', marginBottom: 10 }} />
@@ -414,7 +412,7 @@ const CreateProduct = () => {
             </View>
           </View>
         )}
-
+ 
         <Text style={{ fontSize: 16, fontWeight: "bold", color: "#222", marginBottom: 16, marginTop: 16 }}>
           Specifications
         </Text>

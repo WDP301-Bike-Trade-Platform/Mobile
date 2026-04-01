@@ -30,11 +30,10 @@ const Checkout = ({ route, navigation }) => {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('PAYOS');
   const [isDepositPayment, setIsDepositPayment] = useState(false);
-  const { platformSettings } = useAppContext();
   const isOfferCheckout = Boolean(offerId);
 
-  const depositRate = platformSettings?.deposit_rate ?? 0.1;
-  const shippingFee = platformSettings?.shipping_fee ?? 0;
+  const depositRate = settings?.deposit_rate ?? 0.1;
+  const shippingFee = settings?.shipping_fee ?? 0;
   const orderTotal = totalAmount || listing?.price || listing?.offeredPrice || 0;
   const depositAmount = Math.round(orderTotal * settings.deposit_rate * 100) / 100;
   const payableNow = (() => {

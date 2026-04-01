@@ -150,14 +150,6 @@ const Detail = () => {
     }
   };
 
-  const handleRequestInspection = () => {
-    Alert.alert(
-      "Request Inspection",
-      "To request an inspection, please go to My Listings and use the inspection feature from your listing detail page.",
-      [{ text: "OK" }]
-    );
-  };
-
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f5f7f8" }}>

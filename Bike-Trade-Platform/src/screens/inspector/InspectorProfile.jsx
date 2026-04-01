@@ -237,23 +237,7 @@ const InspectorProfile = () => {
             elevation: 1,
           }}
         >
-          <MenuItem
-            icon="bell"
-            label="Notifications"
-            onPress={() => navigation.navigate("Notifications")}
-          />
-          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
-          <MenuItem
-            icon="cog"
-            label="Settings"
-            onPress={() => alert("Settings")}
-          />
-          <View style={{ height: 1, backgroundColor: "#f3f4f6" }} />
-          <MenuItem
-            icon="help-circle"
-            label="Support"
-            onPress={() => alert("Support")}
-          />
+          
         </View>
 
         {/* Logout */}

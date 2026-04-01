@@ -12,20 +12,20 @@ export const checkProfileComplete = async (navigation) => {
     const user = res?.data || res;
 
     const missingFields = [];
-    if (!user?.full_name) missingFields.push("Họ tên");
-    if (!user?.phone) missingFields.push("Số điện thoại");
-    if (!user?.profile?.national_id) missingFields.push("CMND/CCCD");
-    if (!user?.profile?.bank_account) missingFields.push("Số tài khoản ngân hàng");
-    if (!user?.profile?.bank_name) missingFields.push("Tên ngân hàng");
+    if (!user?.full_name) missingFields.push("Full name");
+    if (!user?.phone) missingFields.push("Phone");
+    if (!user?.profile?.national_id) missingFields.push("National ID");
+    if (!user?.profile?.bank_account) missingFields.push("Bank Account");
+    if (!user?.profile?.bank_name) missingFields.push("Bank Name");
 
     if (missingFields.length > 0) {
       Alert.alert(
-        "Cập nhật hồ sơ",
-        `Bạn cần cập nhật đầy đủ thông tin cá nhân trước khi đăng bài:\n\n- ${missingFields.join("\n- ")}`,
+        "Update Profile",
+        `You need to update your personal information before posting:\n\n- ${missingFields.join("\n- ")}`,
         [
-          { text: "Để sau", style: "cancel" },
+          { text: "Later", style: "cancel" },
           {
-            text: "Cập nhật ngay",
+            text: "Update Now",
             onPress: () => navigation.navigate("EditProfile"),
           },
         ]
@@ -35,7 +35,7 @@ export const checkProfileComplete = async (navigation) => {
 
     return user;
   } catch (error) {
-    Alert.alert("Lỗi", "Không thể kiểm tra hồ sơ. Vui lòng thử lại.");
+    Alert.alert("Error", "Unable to check profile. Please try again.");
     return null;
   }
 };
