@@ -23,6 +23,7 @@ import { checkProfileComplete } from "../utils/profileCheck";
 import { useAppContext } from "../provider/AppProvider";
 import Dropdown from "../component/DropDown";
 import { usePlatformSettings } from "../provider/PlatformSettingsProvider";
+import VelodropeLoadingScreen from "../component/VelodropeLoadingScreen";
 
 // Separate InputField component to prevent re-renders
 const InputField = memo(({ label, field, placeholder, keyboardType = "default", required = false, multiline = false, value, onChangeText }) => (
@@ -541,6 +542,7 @@ const CreateProduct = () => {
             )}
           </Pressable>
         </ScrollView>
+    <VelodropeLoadingScreen visible={isLoading} />
     </SafeAreaView>
   );
 };

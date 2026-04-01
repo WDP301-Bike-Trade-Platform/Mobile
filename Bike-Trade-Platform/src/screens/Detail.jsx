@@ -17,6 +17,7 @@ import { useCart } from "../hooks/useCart";
 import { getProductById } from "../services/api.products";
 import { createChat } from "../services/api.chat";
 import { useAppContext } from "../provider/AppProvider";
+import VelodropeLoadingScreen from "../component/VelodropeLoadingScreen";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -957,6 +958,7 @@ const Detail = () => {
           </View>
         )}
       </SafeAreaView>
+    <VelodropeLoadingScreen visible={loading} />
     </View>
   );
 };

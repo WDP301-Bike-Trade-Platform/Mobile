@@ -18,6 +18,7 @@ import HeaderBar from '../component/HeaderBar';
 import StatusBadge from '../component/StatusBadge';
 import { formatPrice, formatDateTime, decimalToNumber } from '../utils/formatters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import VelodropeLoadingScreen from '../component/VelodropeLoadingScreen';
 
 const STATUS_MAP = {
   PENDING: 'Pending Payment',
@@ -817,6 +818,7 @@ const OrderDetail = ({ route, navigation }) => {
           )}
         </View>
       </ScrollView>
+    <VelodropeLoadingScreen visible={loading} />
     </SafeAreaView>
   );
 };
