@@ -51,9 +51,9 @@ export const PlatformSettingsProvider = ({ children }) => {
     fetchSettings();
   }, [fetchSettings]);
 
-  // Refresh settings every 5 minutes (optional, can be triggered manually)
+  // Refresh settings every 30 seconds
   useEffect(() => {
-    const interval = setInterval(fetchSettings, 5 * 60 * 1000);
+    const interval = setInterval(fetchSettings, 30 * 1000);
     return () => clearInterval(interval);
   }, [fetchSettings]);
 

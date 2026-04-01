@@ -10,12 +10,10 @@ const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [tokenRefreshListener, setTokenRefreshListener] = useState(null);
-  const [platformSettings, setPlatformSettings] = useState(null);
 
   // Check if user is already logged in on app start
   useEffect(() => {
     checkAuthStatus();
-    fetchPlatformSettings();
     
     // Set up response interceptor to detect when refresh token fails
     const interceptor = instance.interceptors.response.use(
@@ -59,15 +57,6 @@ const AppProvider = ({ children }) => {
     await AsyncStorage.removeItem("authToken");
     await AsyncStorage.removeItem("refreshToken");
     await AsyncStorage.removeItem("userData");
-  };
-
-  const fetchPlatformSettings = async () => {
-    try {
-      const settings = await getPlatformSettings(true);
-      setPlatformSettings(settings);
-    } catch (error) {
-      console.log("Error fetching platform settings:", error);
-    }
   };
 
   return (
