@@ -42,11 +42,10 @@ export const addToCart = createAsyncThunk(
     };
 
     try {
-      // First dispatch optimistic update
       dispatch(cartSlice.actions.addItemOptimistic(tempItem));
 
-      // Then call API
-      const response = await addToCartAPI(productData);
+      const listingId = productData.productId || productData.listingId;
+      const response = await addToCartAPI(listingId, productData.quantity || 1);
       const newItem = response?.data || response;
 
       return {

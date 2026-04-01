@@ -85,6 +85,15 @@ const Conversation = () => {
     fetchMessages();
   }, [fetchMessages]);
 
+  // Poll messages every 10s to sync offer status changes from the other party
+  useEffect(() => {
+    if (!chatId) return;
+    const interval = setInterval(() => {
+      fetchMessages();
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [chatId, fetchMessages]);
+
   /* ── Socket.IO real-time ───────────────────────────────────── */
   const handleNewMessage = useCallback(
     (message) => {
@@ -420,57 +429,54 @@ const Conversation = () => {
              })()}
              {isMe ? (
                 <View style={{ marginTop: 8 }}>
-                  {message.offerStatus === "PENDING" && (
-                    <View style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                      <Text style={{ color: "#d97706", fontSize: 13, marginBottom: 4 }}>Pending seller approval</Text>
-                      <Pressable
-                        style={{ backgroundColor: "#fee2e2", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, opacity: processingOfferId === message.offerId ? 0.6 : 1 }}
-                        disabled={processingOfferId === message.offerId}
-                        onPress={() => handleCancelOffer(message.offerId)}
-                      >
-                        {processingOfferId === message.offerId ? (
-                          <ActivityIndicator size="small" color="#dc2626" />
-                        ) : (
-                          <Text style={{ color: "#dc2626", fontWeight: "600", fontSize: 12 }}>Cancel</Text>
-                        )}
-                      </Pressable>
-                    </View>
+                  {(!message.offerStatus || message.offerStatus === "PENDING") && (
+                    <Pressable
+                      style={{ backgroundColor: "#f3f4f6", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, opacity: processingOfferId === message.offerId ? 0.6 : 1 }}
+                      disabled={processingOfferId === message.offerId}
+                      onPress={() => handleCancelOffer(message.offerId)}
+                    >
+                      {processingOfferId === message.offerId ? (
+                        <ActivityIndicator size="small" color="#dc2626" />
+                      ) : (
+                        <Text style={{ color: "#dc2626", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Cancel Offer</Text>
+                      )}
+                    </Pressable>
                   )}
-                 {message.offerStatus === "ACCEPTED" && (
-                   <Pressable
-                     style={{ backgroundColor: "#16a34a", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, marginTop: 6 }}
-                     onPress={() => {
-                       const offerListingId = message.listing?.listing_id || listing?.id || listing?.listing_id;
-                       navigation.navigate("Checkout", {
-                         listing: {
-                           ...(listing || {}),
-                           listing_id: offerListingId,
-                           id: offerListingId,
-                           title: listing?.title || (message.listing?.vehicle ? `${message.listing.vehicle.brand} ${message.listing.vehicle.model}` : ''),
-                           price: message.offeredPrice || listing?.price || 0,
-                         },
-                         offerId: message.offerId,
-                         totalAmount: message.offeredPrice || 0,
-                       });
-                     }}
-                   >
-                     <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center", fontSize: 14 }}>
-                        Checkout {priceStr}
-                     </Text>
-                   </Pressable>
-                 )}
-                 {(message.offerStatus === "REJECTED") && (
-                   <Text style={{ color: "#ff0000ff", fontSize: 13, textAlign: "center" }}>Rejected</Text>
-                 )}
-                 {(message.offerStatus === "CANCELLED") && (
-                   <Text style={{ color: "#ffdd00d7", fontSize: 13, textAlign: "center" }}>Cancelled</Text>
-                 )}
-                 {message.offerStatus === "DONE" && (
-                   <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>
-                 )}
-               </View>
+                  {message.offerStatus === "ACCEPTED" && (
+                    <Pressable
+                      style={{ backgroundColor: "#16a34a", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, marginTop: 6 }}
+                      onPress={() => {
+                        const offerListingId = message.listing?.listing_id || listing?.id || listing?.listing_id;
+                        navigation.navigate("Checkout", {
+                          listing: {
+                            ...(listing || {}),
+                            listing_id: offerListingId,
+                            id: offerListingId,
+                            title: listing?.title || (message.listing?.vehicle ? `${message.listing.vehicle.brand} ${message.listing.vehicle.model}` : ''),
+                            price: message.offeredPrice || listing?.price || 0,
+                          },
+                          offerId: message.offerId,
+                          totalAmount: message.offeredPrice || 0,
+                        });
+                      }}
+                    >
+                      <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center", fontSize: 14 }}>
+                         Checkout {priceStr}
+                      </Text>
+                    </Pressable>
+                  )}
+                  {message.offerStatus === "REJECTED" && (
+                    <Text style={{ color: "#ef4444", fontSize: 13, textAlign: "center" }}>Rejected</Text>
+                  )}
+                  {message.offerStatus === "CANCELLED" && (
+                    <Text style={{ color: "#f59e0b", fontSize: 13, textAlign: "center" }}>Cancelled</Text>
+                  )}
+                  {message.offerStatus === "DONE" && (
+                    <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>
+                  )}
+                </View>
              ) : (
-               <View style={{ marginTop: 8 }}>
+                <View style={{ marginTop: 8 }}>
                   {(!message.offerStatus || message.offerStatus === "PENDING") && (
                     <View style={{ flexDirection: "row", gap: 8 }}>
                       <Pressable style={{ backgroundColor: "#389cfa", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, flex: 1, opacity: processingOfferId === message.offerId ? 0.6 : 1 }} disabled={processingOfferId === message.offerId} onPress={() => handleAcceptOffer(message.offerId)}>
@@ -481,10 +487,32 @@ const Conversation = () => {
                       </Pressable>
                     </View>
                   )}
-                 {message.offerStatus === "ACCEPTED" && <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Accepted</Text>}
-                 {(message.offerStatus === "REJECTED" || message.offerStatus === "CANCELLED") && <Text style={{ color: "#ff0000ff", textAlign: "center", fontSize: 13 }}>Rejected</Text>}
-                 {message.offerStatus === "DONE" && <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>}
-               </View>
+                  {message.offerStatus === "ACCEPTED" && (
+                    <View>
+                      <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13, marginBottom: 6 }}>Accepted</Text>
+                      <Pressable
+                        style={{ backgroundColor: "#fef2f2", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: "#fecaca", opacity: processingOfferId === message.offerId ? 0.6 : 1 }}
+                        disabled={processingOfferId === message.offerId}
+                        onPress={() => handleCancelOffer(message.offerId)}
+                      >
+                        {processingOfferId === message.offerId ? (
+                          <ActivityIndicator size="small" color="#dc2626" />
+                        ) : (
+                          <Text style={{ color: "#dc2626", textAlign: "center", fontWeight: "600", fontSize: 13 }}>Cancel Accepted Offer</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  )}
+                  {message.offerStatus === "REJECTED" && (
+                    <Text style={{ color: "#ef4444", textAlign: "center", fontSize: 13 }}>Rejected</Text>
+                  )}
+                  {message.offerStatus === "CANCELLED" && (
+                    <Text style={{ color: "#f59e0b", textAlign: "center", fontSize: 13 }}>Cancelled</Text>
+                  )}
+                  {message.offerStatus === "DONE" && (
+                    <Text style={{ color: "#16a34a", fontWeight: "bold", textAlign: "center", fontSize: 13 }}>Transaction successful</Text>
+                  )}
+                </View>
              )}
              <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 6, textAlign: isMe ? 'right' : 'left' }}>
                {formatTime(message.sentAt || message.created_at)}
