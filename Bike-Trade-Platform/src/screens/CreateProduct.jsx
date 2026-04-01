@@ -78,7 +78,7 @@ const CreateProduct = () => {
     title: "",
     brand: "",
     model: "",
-    year: new Date().getFullYear().toString(),
+    year: "",
     price: "",
     bike_type: "",
     material: "",
