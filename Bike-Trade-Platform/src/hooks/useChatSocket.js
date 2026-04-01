@@ -52,6 +52,15 @@ const getSocket = async () => {
     return connectionPromise;
 };
 
+export const disconnectSocket = () => {
+    if (globalSocket) {
+        globalSocket.disconnect();
+        globalSocket = null;
+    }
+    connectionPromise = null;
+    console.log('[Socket] Manually disconnected and cleaned up');
+};
+
 export const useChatSocket = ({
     onNewMessage,
     onUserTyping,

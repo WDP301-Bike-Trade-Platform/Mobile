@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
   deposit_rate: 0.1,
   platform_fee_rate: 0.1,
   escrow_hold_hours: 72,
-  remaining_payment_window_min: 10,
+  listing_expiry_days: 7,
   shipping_fee: 35000,
 };
 
@@ -33,7 +33,7 @@ export const PlatformSettingsProvider = ({ children }) => {
         deposit_rate: data?.deposit_rate ?? DEFAULT_SETTINGS.deposit_rate,
         platform_fee_rate: data?.platform_fee_rate ?? DEFAULT_SETTINGS.platform_fee_rate,
         escrow_hold_hours: data?.escrow_hold_hours ?? DEFAULT_SETTINGS.escrow_hold_hours,
-        remaining_payment_window_min: data?.remaining_payment_window_min ?? DEFAULT_SETTINGS.remaining_payment_window_min,
+        listing_expiry_days: data?.listing_expiry_days ?? DEFAULT_SETTINGS.listing_expiry_days,
         shipping_fee: data?.shipping_fee ?? DEFAULT_SETTINGS.shipping_fee,
       });
       setLastFetch(Date.now());
@@ -53,7 +53,7 @@ export const PlatformSettingsProvider = ({ children }) => {
 
   // Refresh settings every 30 seconds
   useEffect(() => {
-    const interval = setInterval(fetchSettings, 30 * 1000);
+    const interval = setInterval(fetchSettings, 10 * 1000);
     return () => clearInterval(interval);
   }, [fetchSettings]);
 

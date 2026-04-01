@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { instance } from "../lib/axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PlatformSettingsProvider } from "./PlatformSettingsProvider";
+import { disconnectSocket } from "../hooks/useChatSocket";
 
 const AppContext = createContext();
 
@@ -54,6 +55,7 @@ const AppProvider = ({ children }) => {
   const logout = async () => {
     setIsAuthenticated(false);
     setUser(null);
+    disconnectSocket();
     await AsyncStorage.removeItem("authToken");
     await AsyncStorage.removeItem("refreshToken");
     await AsyncStorage.removeItem("userData");

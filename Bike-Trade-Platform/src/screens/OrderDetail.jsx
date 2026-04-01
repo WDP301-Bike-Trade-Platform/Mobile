@@ -671,7 +671,7 @@ const OrderDetail = ({ route, navigation }) => {
                 )}
               </Pressable>
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
-                Complete payment within {settings?.remaining_payment_window_min ?? 3} minutes
+                Complete payment within {settings?.escrow_hold_hours ?? 72} hours
               </Text>
             </View>
           )}
