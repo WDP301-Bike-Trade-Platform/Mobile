@@ -375,8 +375,8 @@ const Conversation = () => {
       .slice(0, 2);
   };
 
-  const otherName = otherUser?.fullName || otherUser?.email || "Chat";
-  const otherAvatar = otherUser?.avatarUrl;
+  const otherName = otherUser?.fullName || otherUser?.full_name || otherUser?.email || "Chat";
+  const otherAvatar = otherUser?.avatarUrl || otherUser?.avatar_url;
 
   /* ── Message Bubble ────────────────────────────────────────── */
   const MessageBubble = ({ message }) => {

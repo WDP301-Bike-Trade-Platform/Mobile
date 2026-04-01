@@ -248,7 +248,7 @@ const Detail = () => {
       
       navigation.navigate("Conversation", {
         chatId: chatData.chatId || chatData.chat_id || chatData.id,
-        otherUser: sellerData,
+        otherUser: chatData.otherUser || sellerData,
         listing: {
           ...vehicleData,
           id: listingId,

@@ -91,7 +91,11 @@ const Chat = () => {
     const otherUser = item.otherUser || {};
     const name =
       otherUser.fullName || otherUser.email || `User #${item.otherUserId}`;
-    const avatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+
+    const getInitials = (n) => {
+      if (!n) return "?";
+      return n.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+    };
 
     return (
       <Pressable
@@ -112,15 +116,32 @@ const Chat = () => {
         })}
       >
         <View style={{ position: "relative" }}>
-          <Image
-            source={{ uri: otherUser.avatarUrl || avatarFallback }}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: "#e5e7eb",
-            }}
-          />
+          {otherUser.avatarUrl ? (
+            <Image
+              source={{ uri: otherUser.avatarUrl }}
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: "#e5e7eb",
+              }}
+            />
+          ) : (
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: "#389cfa",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: "700", color: "#fff" }}>
+                {getInitials(name)}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ flex: 1, gap: 4, justifyContent: "center" }}>
