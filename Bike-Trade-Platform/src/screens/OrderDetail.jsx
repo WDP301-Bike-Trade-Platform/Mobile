@@ -639,7 +639,7 @@ const OrderDetail = ({ route, navigation }) => {
               <Text style={{ fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 4 }}>
                   {meta.depositRequired
                     ? `Pay đ${formatPrice(depositAmount)} to lock the listing`
-                    : `Pay đ${formatPrice(totalAmount)} securely via PayOS`}
+                    : `Pay đ${formatPrice(totalAmount + shippingFee) } securely via PayOS`}
               </Text>
             </View>
           )}
